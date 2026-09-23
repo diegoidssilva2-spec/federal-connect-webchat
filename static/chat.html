@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Federal Conect — Fale com a gente</title>
+<style>
+  :root{
+    --bg:#2B2050; --bg-2:#372A66; --verde:#3DD9A0; --verde-forte:#5EEBB8;
+    --texto:#F3F1FA; --texto-fraco:#BDB0DE; --bolha-ia:#3A2B6B; --bolha-lead:#6A3FC0;
+  }
+  *{box-sizing:border-box; -webkit-text-size-adjust:100%;}
+  html, body{ width:100%; overflow-x:hidden; }
+  body{
+    margin:0; height:100vh; height:100dvh; color:var(--texto);
+    font-family:'Helvetica Neue', Arial, sans-serif; display:flex; flex-direction:column;
+    background: radial-gradient(1200px 800px at 15% -10%, #8C5FE0 0%, #2B2050 60%);
+  }
+  header{
+    padding:16px 20px; background:rgba(55,42,102,0.85); backdrop-filter: blur(6px);
+    border-bottom:1px solid rgba(155,89,232,0.25);
+    display:flex; align-items:center; gap:12px; flex-shrink:0;
+  }
+  header .avatar{
+    width:38px; height:38px; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, var(--verde-forte), var(--verde) 55%, #3DD9A0);
+    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
+    color:#0D2B22; flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
+  }
+  header .ponto{ width:10px; height:10px; border-radius:50%; background:var(--verde-forte); }
+  header .titulo{ font-weight:600; font-size:15px; }
+  header .sub{ font-size:12px; color:var(--texto-fraco); }
+
+  #mensagens{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; -webkit-overflow-scrolling:touch; }
+  .msg{ max-width:78%; padding:10px 14px; border-radius:14px; font-size:14.5px; line-height:1.45; animation: entrar .25s ease; word-wrap:break-word; }
+  @keyframes entrar{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .msg .hora{ font-size:10px; color:var(--texto-fraco); margin-top:4px; opacity:.7; }
+  .msg.lead .hora{ text-align:right; }
+  .digitando{ align-self:flex-start; display:flex; gap:4px; padding:12px 16px; }
+  .digitando span{ width:6px; height:6px; border-radius:50%; background:var(--texto-fraco); animation: pulsar 1.1s infinite ease-in-out; }
+  .digitando span:nth-child(2){ animation-delay:.15s; }
+  .digitando span:nth-child(3){ animation-delay:.3s; }
+  @keyframes pulsar{ 0%,60%,100%{ opacity:.3; transform:translateY(0); } 30%{ opacity:1; transform:translateY(-3px); } }
+  .msg.ia, .msg.operador{ background:var(--bolha-ia); align-self:flex-start; border-bottom-left-radius:4px; }
+  .msg.lead{ background:var(--bolha-lead); align-self:flex-end; border-bottom-right-radius:4px; }
+  .msg .tag{ font-size:10.5px; color:var(--texto-fraco); margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px; }
+
+  form{ display:flex; padding:14px; gap:10px; background:var(--bg-2); align-items:center; flex-shrink:0; padding-bottom:calc(14px + env(safe-area-inset-bottom)); }
+  input[type="text"]{
+    flex:1; padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.15);
+    background:#241A44; color:var(--texto); font-size:16px; min-width:0;
+  }
+  input:focus{ outline:1px solid var(--verde); }
+  button{
+    background:var(--verde); color:#0D2B22; border:none; border-radius:10px;
+    padding:0 20px; font-weight:600; cursor:pointer; flex-shrink:0;
+  }
+  button:hover{ background:var(--verde-forte); }
+  #btn-anexar{
+    background:none; border:1px solid rgba(155,89,232,0.3); color:var(--texto);
+    width:44px; height:44px; border-radius:10px; padding:0; font-size:18px; flex-shrink:0;
+  }
+  #btn-anexar:hover{ border-color:var(--verde); background:none; }
+  .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
+  .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
+  #preview-imagem{ display:none; padding:0 14px 10px; background:var(--bg-2); }
+  #preview-imagem img{ max-height:70px; border-radius:6px; }
+  #preview-imagem .remover{ color:var(--texto-fraco); font-size:12px; margin-left:10px; cursor:pointer; }
+
+  @media (max-width: 480px){
+    header{ padding:12px 14px; gap:10px; }
+    header .titulo{ font-size:14px; }
+    header .sub{ font-size:11px; }
+    #mensagens{ padding:14px; gap:10px; }
+    .msg{ max-width:88%; font-size:14px; padding:9px 12px; }
+    form{ padding:10px; gap:8px; }
+    #btn-anexar{ width:40px; height:40px; font-size:16px; }
+    button[type="submit"]{ padding:0 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="avatar">FC</div>
+  <div>
+    <div class="titulo">Federal Conect</div>
+    <div class="sub">Consultor digital · online agora</div>
+  </div>
+</header>
+
+<div id="mensagens"></div>
+
+<div id="preview-imagem">
+  <img id="preview-imagem-src" />
+  <span class="remover" id="remover-imagem">remover</span>
+</div>
+
+<form id="form-msg">
+  <input type="file" id="input-arquivo" accept="image/*" style="display:none" />
+  <button type="button" id="btn-anexar" title="Anexar imagem (ex: comprovante)">📎</button>
+  <input type="text" id="input-msg" placeholder="Digite sua mensagem..." autocomplete="off" />
+  <button type="submit">Enviar</button>
+</form>
+
+<script>
+  const mensagensEl = document.getElementById('mensagens');
+  const form = document.getElementById('form-msg');
+  const input = document.getElementById('input-msg');
+
+  // Escapa HTML (evita que texto do lead ou da IA quebre o layout ou
+  // injete tags) e depois transforma URLs em links clicáveis de verdade
+  // (target=_blank) — antes disso o link vinha como texto puro, sem dar
+  // pra clicar, obrigando o lead a copiar/colar manualmente.
+  function formatarMensagem(texto){
+    if(!texto) return '';
+    const escapado = texto
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const comLinks = escapado.replace(
+      /(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+    return comLinks.replace(/\n/g, '<br>');
+  }
+
+  function addMsg(remetente, texto, imagemDataUrl){
+    const div = document.createElement('div');
+    div.className = 'msg ' + remetente;
+    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'Consultor' : 'Atendente'}</div>`;
+    const imgHtml = imagemDataUrl ? `<img src="${imagemDataUrl}" />` : '';
+    const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    div.innerHTML = tag + formatarMensagem(texto) + imgHtml + `<div class="hora">${hora}</div>`;
+    mensagensEl.appendChild(div);
+    mensagensEl.scrollTop = mensagensEl.scrollHeight;
+  }
+
+  function mostrarDigitando(){
+    const div = document.createElement('div');
+    div.className = 'msg ia digitando';
+    div.id = 'indicador-digitando';
+    div.innerHTML = '<span></span><span></span><span></span>';
+    mensagensEl.appendChild(div);
+    mensagensEl.scrollTop = mensagensEl.scrollHeight;
+  }
+  function esconderDigitando(){
+    const el = document.getElementById('indicador-digitando');
+    if(el) el.remove();
+  }
+
+  function travarEnvio(travar){
+    input.disabled = travar;
+    form.querySelector('button[type="submit"]').disabled = travar;
+    btnAnexar.disabled = travar;
+  }
+
+  // --- anexar imagem ---
+  const inputArquivo = document.getElementById('input-arquivo');
+  const btnAnexar = document.getElementById('btn-anexar');
+  const previewWrap = document.getElementById('preview-imagem');
+  const previewImg = document.getElementById('preview-imagem-src');
+  const removerImagem = document.getElementById('remover-imagem');
+  let imagemPendente = null; // { base64, mediaType, dataUrl }
+
+  btnAnexar.addEventListener('click', () => inputArquivo.click());
+
+  inputArquivo.addEventListener('change', () => {
+    const file = inputArquivo.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result; // "data:image/jpeg;base64,AAAA..."
+      const base64 = dataUrl.split(',')[1];
+      imagemPendente = { base64, mediaType: file.type, dataUrl };
+      previewImg.src = dataUrl;
+      previewWrap.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removerImagem.addEventListener('click', () => {
+    imagemPendente = null;
+    inputArquivo.value = '';
+    previewWrap.style.display = 'none';
+  });
+
+  const params = new URLSearchParams(location.search);
+  let sessionId = localStorage.getItem('federal_session_id') || params.get('session_id') || '';
+
+  const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${protocolo}://${location.host}/ws/chat${sessionId ? '?session_id=' + sessionId : ''}`);
+
+  const MENSAGEM_BOAS_VINDAS = 'Oi! 👋 Eu sou o consultor digital da Federal Conect. Me conta, você já conhece nossos planos de internet ou quer que eu te apresente as opções?';
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if(data.type === 'sessao'){
+      sessionId = data.session_id;
+      localStorage.setItem('federal_session_id', sessionId);
+    } else if(data.type === 'historico'){
+      // Reconectou (recarregou a página / saiu e voltou) — o servidor manda
+      // de volta o que já tinha sido conversado, pra não perder tudo.
+      // Se vier vazio, é sessão nova mesmo: mostra a mensagem de boas-vindas.
+      if(data.mensagens && data.mensagens.length){
+        data.mensagens.forEach(m => addMsg(m.remetente, m.texto));
+      } else if(mensagensEl.children.length === 0){
+        addMsg('ia', MENSAGEM_BOAS_VINDAS);
+      }
+    } else if(data.type === 'mensagem'){
+      esconderDigitando();
+      travarEnvio(false);
+      addMsg(data.remetente, data.texto);
+    }
+  };
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texto = input.value.trim();
+    if(!texto && !imagemPendente) return;
+
+    addMsg('lead', texto, imagemPendente ? imagemPendente.dataUrl : null);
+
+    const payload = { texto };
+    if(imagemPendente){
+      payload.imagem_base64 = imagemPendente.base64;
+      payload.imagem_media_type = imagemPendente.mediaType;
+    }
+    ws.send(JSON.stringify(payload));
+    travarEnvio(true);
+    mostrarDigitando();
+
+    input.value = '';
+    imagemPendente = null;
+    inputArquivo.value = '';
+    previewWrap.style.display = 'none';
+  });
+</script>
+
+</body>
+</html>

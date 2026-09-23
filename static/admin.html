@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Painel — Federal Conect</title>
+<style>
+  :root{
+    --bg:#2B2050; --bg-2:#372A66; --linha:rgba(155,89,232,0.25);
+    --texto:#F3F1FA; --texto-fraco:#BDB0DE; --verde:#3DD9A0; --laranja:#D9922C; --vermelho:#C9573F;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; height:100vh; background:var(--bg); color:var(--texto); font-family:'Helvetica Neue',Arial,sans-serif; }
+
+  #login{ display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
+  #login input{ padding:12px 16px; border-radius:8px; border:1px solid var(--linha); background:var(--bg-2); color:var(--texto); width:260px; }
+  #login button{ padding:12px 20px; border-radius:8px; border:none; background:var(--verde); color:#0D2B22; font-weight:600; cursor:pointer; }
+
+  #app{ display:none; height:100vh; flex-direction:column; }
+  #app.ativo{ display:flex; }
+
+  #abas{ display:flex; gap:4px; padding:10px 14px 0; background:var(--bg-2); border-bottom:1px solid var(--linha); flex-shrink:0; }
+  #abas button{ background:none; border:none; color:var(--texto-fraco); padding:10px 16px; font-size:13.5px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent; }
+  #abas button.ativa{ color:var(--texto); border-bottom-color:var(--verde); }
+
+  #view-conversas{ flex:1; display:none; grid-template-columns: 340px 1fr; min-height:0; }
+  #view-conversas.ativa{ display:grid; }
+  #view-relatorios{ flex:1; display:none; overflow-y:auto; padding:26px; }
+  #view-relatorios.ativa{ display:block; }
+
+  .cards-metricas{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:28px; }
+  .card-metrica{ background:var(--bg-2); border:1px solid var(--linha); border-radius:12px; padding:16px 18px; }
+  .card-metrica .valor{ font-size:28px; font-weight:700; }
+  .card-metrica .rotulo{ font-size:12px; color:var(--texto-fraco); margin-top:4px; }
+  #view-relatorios h3{ font-size:14px; color:var(--texto-fraco); text-transform:uppercase; letter-spacing:.5px; margin:0 0 12px; }
+  .barra-estagio{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px; }
+  .barra-estagio .rotulo-estagio{ width:150px; flex-shrink:0; text-transform:capitalize; }
+  .barra-estagio .trilho{ flex:1; background:rgba(255,255,255,0.06); border-radius:6px; height:10px; overflow:hidden; }
+  .barra-estagio .preenchido{ background:var(--verde); height:100%; }
+  .barra-estagio .contagem{ width:34px; text-align:right; flex-shrink:0; color:var(--texto-fraco); }
+
+  #lista{ background:var(--bg-2); border-right:1px solid var(--linha); overflow-y:auto; }
+  .item{ padding:14px 16px; border-bottom:1px solid var(--linha); cursor:pointer; }
+  .item:hover{ background:rgba(255,255,255,0.03); }
+  .item.selecionado{ background:rgba(63,174,106,0.12); border-left:3px solid var(--verde); }
+  .item .nome{ font-size:14px; font-weight:600; }
+  .item .estagio{ font-size:11px; text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
+  .estagio.novo{ color:var(--texto-fraco); }
+  .estagio.conversando{ color:var(--verde); }
+  .estagio.aguardando_humano{ color:var(--laranja); font-weight:700; }
+  .estagio.com_humano{ color:var(--laranja); }
+  .estagio.aguardando_pagamento, .estagio.aguardando_ativacao{ color:#C9A24B; }
+  .estagio.concluido{ color:var(--texto-fraco); text-decoration:line-through; }
+
+  #conversa{ display:flex; flex-direction:column; height:100%; min-height:0; }
+  #topo-conversa{ padding:14px 20px; border-bottom:1px solid var(--linha); display:flex; justify-content:space-between; align-items:center; }
+  #notas-conversa{ font-size:11.5px; color:var(--texto-fraco); margin-top:3px; font-weight:400; }
+  #topo-conversa select{ background:var(--bg-2); color:var(--texto); border:1px solid var(--linha); border-radius:6px; padding:6px 10px; }
+  #topo-conversa button{ padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
+  #btn-toggle-humano.assumir{ background:var(--laranja); color:#2A1B04; }
+  #btn-toggle-humano.liberar{ background:var(--verde); color:#0D2B22; }
+
+  #msgs{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px; }
+  .msg{ max-width:70%; padding:9px 13px; border-radius:12px; font-size:14px; }
+  .msg .tag{ font-size:10px; color:var(--texto-fraco); text-transform:uppercase; margin-bottom:2px; }
+  .msg.lead{ background:#1E2A3A; align-self:flex-start; }
+  .msg.ia{ background:#1A2E22; align-self:flex-end; }
+  .msg.operador{ background:#3A2A14; align-self:flex-end; }
+  .msg a{ color:var(--verde); text-decoration:underline; word-break:break-all; }
+
+  #form-operador{ display:none; padding:14px; gap:10px; border-top:1px solid var(--linha); }
+  #form-operador.ativo{ display:flex; }
+  #form-operador input{ flex:1; padding:10px 14px; border-radius:8px; border:1px solid var(--linha); background:var(--bg-2); color:var(--texto); }
+  #form-operador button{ padding:0 18px; border-radius:8px; border:none; background:var(--laranja); color:#2A1B04; font-weight:600; cursor:pointer; }
+
+  #vazio{ display:flex; height:100%; align-items:center; justify-content:center; color:var(--texto-fraco); }
+
+  @media (max-width: 720px){
+    #view-conversas.ativa{ grid-template-columns: 1fr; }
+    #view-conversas.ativa.ver-conversa #lista{ display:none; }
+    #view-conversas.ativa:not(.ver-conversa) #conversa{ display:none; }
+    #btn-voltar-lista{ display:inline-block !important; }
+    #topo-conversa{ flex-wrap:wrap; gap:8px; }
+  }
+  #btn-voltar-lista{ display:none; background:none; border:1px solid var(--linha); color:var(--texto); padding:6px 10px; border-radius:6px; margin-right:8px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div style="font-size:18px;font-weight:600">Painel Federal Conect</div>
+  <input id="input-senha" type="password" placeholder="Senha do operador" />
+  <button id="btn-entrar">Entrar</button>
+</div>
+
+<div id="app">
+  <div id="abas">
+    <button id="aba-conversas" class="ativa" type="button">Conversas</button>
+    <button id="aba-relatorios" type="button">Relatórios</button>
+  </div>
+  <div id="view-conversas" class="ativa">
+    <div id="lista"></div>
+    <div id="conversa">
+      <div id="vazio">Selecione uma conversa à esquerda</div>
+    </div>
+  </div>
+  <div id="view-relatorios"></div>
+</div>
+
+<script>
+  let ws = null;
+  let conversas = [];
+  let selecionada = null;
+
+  document.getElementById('btn-entrar').addEventListener('click', entrar);
+  document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(); });
+
+  // --- Abas Conversas / Relatórios ---
+  document.getElementById('aba-conversas').addEventListener('click', () => trocarAba('conversas'));
+  document.getElementById('aba-relatorios').addEventListener('click', () => trocarAba('relatorios'));
+
+  function trocarAba(aba){
+    document.getElementById('aba-conversas').classList.toggle('ativa', aba === 'conversas');
+    document.getElementById('aba-relatorios').classList.toggle('ativa', aba === 'relatorios');
+    document.getElementById('view-conversas').classList.toggle('ativa', aba === 'conversas');
+    document.getElementById('view-relatorios').classList.toggle('ativa', aba === 'relatorios');
+    if(aba === 'relatorios') renderRelatorios();
+  }
+
+  // Rótulos amigáveis pros estágios, na ordem em que aparecem no relatório.
+  const ROTULOS_ESTAGIO = {
+    novo: 'Novo', conversando: 'Conversando', aguardando_humano: 'Aguardando humano',
+    com_humano: 'Com humano', aguardando_pagamento: 'Aguardando pagamento',
+    aguardando_ativacao: 'Aguardando ativação', concluido: 'Concluído',
+  };
+
+  function renderRelatorios(){
+    const el = document.getElementById('view-relatorios');
+    const total = conversas.length;
+    const hojeStr = new Date().toDateString();
+    const leadsHoje = conversas.filter(c => c.criada_em && new Date(c.criada_em * 1000).toDateString() === hojeStr).length;
+    const concluidos = conversas.filter(c => c.estagio === 'concluido').length;
+    const comHumano = conversas.filter(c => c.humano_ativo).length;
+    const taxaFechamento = total ? Math.round((concluidos / total) * 100) : 0;
+
+    const porEstagio = {};
+    Object.keys(ROTULOS_ESTAGIO).forEach(e => porEstagio[e] = 0);
+    conversas.forEach(c => { porEstagio[c.estagio] = (porEstagio[c.estagio] || 0) + 1; });
+    const maiorContagem = Math.max(1, ...Object.values(porEstagio));
+
+    el.innerHTML = `
+      <div class="cards-metricas">
+        <div class="card-metrica"><div class="valor">${total}</div><div class="rotulo">Leads no total</div></div>
+        <div class="card-metrica"><div class="valor">${leadsHoje}</div><div class="rotulo">Novos leads hoje</div></div>
+        <div class="card-metrica"><div class="valor">${taxaFechamento}%</div><div class="rotulo">Taxa de fechamento (concluído/total)</div></div>
+        <div class="card-metrica"><div class="valor">${comHumano}</div><div class="rotulo">Conversas com humano agora</div></div>
+      </div>
+      <h3>Leads por estágio</h3>
+      ${Object.keys(ROTULOS_ESTAGIO).map(e => `
+        <div class="barra-estagio">
+          <div class="rotulo-estagio">${ROTULOS_ESTAGIO[e]}</div>
+          <div class="trilho"><div class="preenchido" style="width:${(porEstagio[e] / maiorContagem) * 100}%"></div></div>
+          <div class="contagem">${porEstagio[e]}</div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  function entrar(){
+    const senha = document.getElementById('input-senha').value;
+    const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${protocolo}://${location.host}/ws/painel?senha=${encodeURIComponent(senha)}`);
+
+    ws.onopen = () => {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').classList.add('ativo');
+    };
+    ws.onclose = (ev) => {
+      if(ev.code === 4001) alert('Senha incorreta.');
+      document.getElementById('login').style.display = 'flex';
+      document.getElementById('app').classList.remove('ativo');
+    };
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if(data.type === 'lista'){
+        conversas = data.conversas;
+        renderLista();
+        // Antes, uma atualização de lista (ex: clicar "Assumir conversa")
+        // só atualizava a barra lateral — o painel da conversa aberta não
+        // sabia que agora tinha um humano ativo, então o botão e a caixa
+        // de digitar pro operador nunca apareciam. Aqui a gente atualiza
+        // só o cabeçalho/botão/formulário do painel aberto, sem apagar as
+        // mensagens já carregadas.
+        atualizarPainelSelecionado();
+        // Se a aba de Relatórios estiver aberta, mantém as métricas ao vivo.
+        if(document.getElementById('view-relatorios').classList.contains('ativa')) renderRelatorios();
+      } else if(data.type === 'historico' && data.session_id === selecionada){
+        const msgs = document.getElementById('msgs');
+        if(msgs){
+          msgs.innerHTML = '';
+          data.mensagens.forEach(m => renderMensagemNova(m.remetente, m.texto));
+        }
+      } else if(data.type === 'mensagem' && data.session_id === selecionada){
+        renderMensagemNova(data.remetente, data.texto);
+      }
+    };
+  }
+
+  function renderLista(){
+    const el = document.getElementById('lista');
+    el.innerHTML = '';
+    conversas.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'item' + (c.session_id === selecionada ? ' selecionado' : '');
+      const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
+      div.innerHTML = `<div class="nome">${nome}</div><div class="estagio ${c.estagio}">${c.estagio.replace(/_/g,' ')}</div>`;
+      div.addEventListener('click', () => selecionar(c.session_id));
+      el.appendChild(div);
+    });
+  }
+
+  const ESTAGIOS = ['novo','conversando','aguardando_humano','com_humano','aguardando_pagamento','aguardando_ativacao','concluido'];
+
+  function selecionar(sessionId){
+    selecionada = sessionId;
+    renderLista();
+    document.getElementById('view-conversas').classList.add('ver-conversa');
+    montarPainel(sessionId, { comHistorico: true });
+  }
+
+  // Monta o painel inteiro (cabeçalho + mensagens vazias + form). Só é
+  // chamado quando o operador clica numa conversa (uma vez). Atualizações
+  // depois disso (ex: outro operador assumiu, IA mudou estágio) passam por
+  // atualizarPainelSelecionado(), que NÃO reconstrói #msgs.
+  function montarPainel(sessionId, opcoes){
+    const c = conversas.find(x => x.session_id === sessionId);
+    if(!c) return;
+    const painel = document.getElementById('conversa');
+    const humanoAtivo = c.humano_ativo;
+    painel.innerHTML = `
+      <div id="topo-conversa">
+        <button id="btn-voltar-lista" type="button">&larr; Conversas</button>
+        <div>
+          <div id="titulo-conversa">${tituloConversa(c)}</div>
+          <div id="notas-conversa">${notasELinha(c)}</div>
+        </div>
+        <div>
+          <select id="select-estagio">
+            ${ESTAGIOS.map(e => `<option value="${e}" ${e===c.estagio?'selected':''}>${e.replace(/_/g,' ')}</option>`).join('')}
+          </select>
+          <button id="btn-toggle-humano" class="${humanoAtivo ? 'liberar' : 'assumir'}">${humanoAtivo ? 'Devolver pra IA' : 'Assumir conversa'}</button>
+        </div>
+      </div>
+      <div id="msgs"></div>
+      <div id="resumo-encerramento">${c.resumo_encerramento ? `📋 ${c.resumo_encerramento}` : ''}</div>
+      <form id="form-operador" class="${humanoAtivo ? 'ativo' : ''}">
+        <input id="input-operador" placeholder="Digite pra responder o lead diretamente..." autocomplete="off" />
+        <button type="submit">Enviar</button>
+      </form>
+    `;
+    ligarEventosPainel(sessionId);
+    document.getElementById('btn-voltar-lista').addEventListener('click', () => {
+      document.getElementById('view-conversas').classList.remove('ver-conversa');
+    });
+    if(opcoes && opcoes.comHistorico){
+      // Carrega o histórico da conversa (sem isso, abrir uma conversa em
+      // andamento aparecia vazia, dando impressão de painel quebrado).
+      ws.send(JSON.stringify({acao:'abrir', session_id: sessionId}));
+    }
+  }
+
+  function tituloConversa(c){
+    const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
+    const telefone = c.lead_phone ? ` · 📱 ${c.lead_phone}` : '';
+    return `${nome}${telefone} — <span class="estagio ${c.estagio}">${c.estagio.replace(/_/g,' ')}</span>`;
+  }
+
+  function notasELinha(c){
+    const partes = [];
+    if(c.lead_origem) partes.push('📍 ' + c.lead_origem);
+    if(c.lead_notes) partes.push('📝 ' + c.lead_notes);
+    return partes.join(' &nbsp;·&nbsp; ');
+  }
+
+  function ligarEventosPainel(sessionId){
+    document.getElementById('select-estagio').addEventListener('change', (e) => {
+      ws.send(JSON.stringify({acao:'mudar_estagio', session_id: sessionId, estagio: e.target.value}));
+    });
+    document.getElementById('btn-toggle-humano').addEventListener('click', (e) => {
+      const acao = e.target.classList.contains('liberar') ? 'liberar_para_ia' : 'assumir';
+      ws.send(JSON.stringify({acao, session_id: sessionId}));
+    });
+    const form = document.getElementById('form-operador');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('input-operador');
+      const texto = input.value.trim();
+      if(!texto) return;
+      ws.send(JSON.stringify({acao:'mensagem', session_id: sessionId, texto}));
+      renderMensagemNova('operador', texto);
+      input.value = '';
+    });
+  }
+
+  // Atualiza cabeçalho/botão/select/form do painel ABERTO sem apagar as
+  // mensagens — chamado toda vez que chega uma "lista" nova do servidor
+  // (ex: depois de clicar Assumir, a conversa muda de estado e o painel
+  // precisa refletir isso na hora, sem precisar reclicar na conversa).
+  function atualizarPainelSelecionado(){
+    if(!selecionada) return;
+    const topo = document.getElementById('topo-conversa');
+    if(!topo) return; // painel ainda não foi montado (estado "vazio")
+    const c = conversas.find(x => x.session_id === selecionada);
+    if(!c) return;
+
+    const titulo = document.getElementById('titulo-conversa');
+    if(titulo) titulo.innerHTML = tituloConversa(c);
+
+    const notas = document.getElementById('notas-conversa');
+    if(notas) notas.innerHTML = notasELinha(c);
+
+    const select = document.getElementById('select-estagio');
+    if(select && select.value !== c.estagio) select.value = c.estagio;
+
+    const btn = document.getElementById('btn-toggle-humano');
+    if(btn){
+      const deveSerLiberar = c.humano_ativo;
+      const eraLiberar = btn.classList.contains('liberar');
+      if(deveSerLiberar !== eraLiberar){
+        btn.textContent = deveSerLiberar ? 'Devolver pra IA' : 'Assumir conversa';
+        btn.className = deveSerLiberar ? 'liberar' : 'assumir';
+      }
+    }
+
+    const form = document.getElementById('form-operador');
+    if(form) form.classList.toggle('ativo', c.humano_ativo);
+
+    const resumo = document.getElementById('resumo-encerramento');
+    if(resumo) resumo.textContent = c.resumo_encerramento ? `📋 ${c.resumo_encerramento}` : '';
+  }
+
+  // Mesmo fix do chat.html: escapa HTML e transforma URLs em link clicável
+  // (target=_blank) — antes disso vinha como texto puro no painel também.
+  function formatarMensagem(texto){
+    if(!texto) return '';
+    const escapado = texto
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return escapado.replace(
+      /(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+  }
+
+  function renderMensagemNova(remetente, texto){
+    const msgs = document.getElementById('msgs');
+    if(!msgs) return;
+    const div = document.createElement('div');
+    div.className = 'msg ' + remetente;
+    div.innerHTML = `<div class="tag">${remetente}</div>${formatarMensagem(texto)}`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+</script>
+
+</body>
+</html>
