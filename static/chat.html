@@ -14,18 +14,11 @@
   body{
     margin:0; height:100vh; height:100dvh; color:var(--texto);
     font-family:'Helvetica Neue', Arial, sans-serif; display:flex; flex-direction:column;
-    /* Imagem de fundo (chip + wifi, mandada pelo Diegão) com um degradê escuro
-       por cima pra garantir contraste de leitura das mensagens em qualquer
-       tela — sem o degradê, texto claro em cima de área clara da imagem
-       ficava ilegível. background-attachment:fixed evita que o fundo role
-       junto com o scroll das mensagens no desktop; em mobile cai pra scroll
-       normal automaticamente (Safari/iOS ignora fixed dentro de containers). */
-    background-image:
-      linear-gradient(180deg, rgba(20,14,38,0.82) 0%, rgba(20,14,38,0.90) 100%),
-      url('/static/fundo-chat.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+    /* Voltou pro degradê roxo original — a tentativa com imagem de fundo
+       ficou cinza/quebrada (arquivo grande demais / fora do formato certo).
+       Ver nota em chat_fundo_formato_recomendado no final do arquivo pra
+       quando o Diegão recriar a imagem no tamanho certo. */
+    background: radial-gradient(1200px 800px at 15% -10%, #8C5FE0 0%, #2B2050 60%);
   }
   header{
     padding:16px 20px; background:rgba(55,42,102,0.85); backdrop-filter: blur(6px);

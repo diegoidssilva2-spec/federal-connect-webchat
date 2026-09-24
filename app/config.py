@@ -3,6 +3,12 @@ import os
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 PRIMARY_MODEL = os.environ.get("PRIMARY_MODEL", "claude-haiku-4-5-20251001")
 
+# Banco Postgres (Neon) — Fase 1. String de conexão do Neon, algo como
+# "postgresql://usuario:senha@ep-xxx.neon.tech/neondb?sslmode=require".
+# Sem essa variável configurada, o projeto continua rodando só em memória
+# (Fase 0), sem quebrar nada — é só não ter persistência entre restarts.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
 # Link real de adesão/associado (do Marcos) — a cartilha sempre instruiu
 # a IA a mandar esse link, mas ele nunca foi configurado de verdade até
 # agora. Pode ser sobrescrito por variável de ambiente se mudar no futuro.

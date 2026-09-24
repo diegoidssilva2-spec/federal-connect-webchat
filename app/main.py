@@ -25,13 +25,27 @@ from app.config import OPERATOR_PASSWORD
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
-    registrar_atualizacao_lead,
+    registrar_atualizacao_lead, inicializar_banco_e_carregar, salvar_no_banco,
+    excluir_conversa,
 )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("federal-webchat")
 
 app = FastAPI(title="Federal Connect - Web Chat")
+
+
+@app.on_event("startup")
+async def _ao_subir():
+    # Carrega tudo que já tava salvo no Postgres (Neon) pro dicionário em
+    # memória — sem isso, todo redeploy do Render apagava as conversas em
+    # andamento. Roda em thread pra não travar a subida do servidor.
+    await asyncio.to_thread(inicializar_banco_e_carregar)
+
+
+async def _persistir(conversa: Conversa) -> None:
+    """Grava a conversa no banco em thread separada (I/O de rede)."""
+    await asyncio.to_thread(salvar_no_banco, conversa)
 
 
 @app.get("/health")
@@ -245,6 +259,7 @@ async def ws_chat(websocket: WebSocket, session_id: str | None = Query(default=N
                 # falar, tipo "o Bruno é motorista de app", e atualiza toda
                 # vez que a pessoa der mais informação, não só na primeira).
                 await _atualizar_perfil_lead(conversa)
+                await _persistir(conversa)
                 await _broadcast_painel()
                 continue
 
@@ -281,6 +296,7 @@ async def ws_chat(websocket: WebSocket, session_id: str | None = Query(default=N
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
 
+            await _persistir(conversa)
             await _broadcast_painel()
 
     except WebSocketDisconnect:
@@ -324,11 +340,13 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
             elif acao == "assumir":
                 conversa.humano_ativo = True
                 conversa.estagio = "com_humano"
+                await _persistir(conversa)
                 await _broadcast_painel()
 
             elif acao == "liberar_para_ia":
                 conversa.humano_ativo = False
                 conversa.estagio = "conversando"
+                await _persistir(conversa)
                 await _broadcast_painel()
 
             elif acao == "mudar_estagio":
@@ -337,6 +355,7 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
                     conversa.estagio = novo_estagio
                     if novo_estagio == "concluido":
                         compactar_conversa_encerrada(conversa)
+                    await _persistir(conversa)
                     await _broadcast_painel()
 
             elif acao == "mensagem":
@@ -353,6 +372,14 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
                     except Exception:
                         logger.warning("Falha ao entregar mensagem do operador ao visitante (desconectado)")
                 await _enviar_mensagem_para_operadores_da_conversa(conversa, "operador", texto)
+                await _persistir(conversa)
+                await _broadcast_painel()
+
+            elif acao == "excluir":
+                # Apaga de vez (memória + banco) — pra limpar conversas de
+                # teste antes de uma campanha rodar valendo, sem misturar
+                # com dado de lead de verdade no CRM/relatório.
+                await asyncio.to_thread(excluir_conversa, session_id)
                 await _broadcast_painel()
 
     except WebSocketDisconnect:

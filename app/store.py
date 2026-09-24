@@ -16,6 +16,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from app.config import CRM_WEBHOOK_URL, LEADS_CSV_PATH
+from app import db
 
 logger = logging.getLogger("federal-webchat")
 
@@ -88,6 +89,50 @@ CONVERSAS: dict[str, Conversa] = {}
 # Conexões websocket do painel do operador, pra broadcast de atualização em
 # tempo real (lista de conversas + mensagens novas).
 OPERADORES_CONECTADOS: set = set()
+
+
+def inicializar_banco_e_carregar() -> None:
+    """
+    Chamado uma vez, na subida do servidor (main.py). Cria a tabela se não
+    existir e repopula CONVERSAS com tudo que já estava salvo — é isso que
+    faz um restart/redeploy do Render não apagar mais as conversas em
+    andamento. Se não tiver banco configurado, não faz nada (Fase 0 normal).
+    """
+    db.inicializar()
+    for linha in db.carregar_todas():
+        conversa = Conversa(
+            session_id=linha["session_id"],
+            lead_name=linha["lead_name"],
+            lead_phone=linha["lead_phone"],
+            lead_notes=linha["lead_notes"],
+            lead_origem=linha["lead_origem"],
+            history=linha["history"] or [],
+            estagio=linha["estagio"],
+            humano_ativo=linha["humano_ativo"],
+            criada_em=linha["criada_em"],
+            ultima_mensagem_em=linha["ultima_mensagem_em"],
+            handoff_link_enviado=linha["handoff_link_enviado"],
+            resumo_encerramento=linha["resumo_encerramento"],
+        )
+        CONVERSAS[conversa.session_id] = conversa
+    if CONVERSAS:
+        logger.info("Carregadas %d conversas do banco na subida do servidor.", len(CONVERSAS))
+
+
+def salvar_no_banco(conversa: Conversa) -> None:
+    """Grava/atualiza uma conversa no Postgres. Chamar via asyncio.to_thread."""
+    db.salvar(conversa)
+
+
+def excluir_conversa(session_id: str) -> bool:
+    """
+    Remove a conversa da memória E do banco — usado pelo operador no painel
+    pra limpar conversas de teste antes de uma campanha rodar valendo, sem
+    misturar dado de teste com lead de verdade.
+    """
+    existia = CONVERSAS.pop(session_id, None) is not None
+    db.excluir(session_id)
+    return existia
 
 
 def nova_conversa() -> Conversa:

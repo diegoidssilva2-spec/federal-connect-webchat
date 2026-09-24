@@ -65,6 +65,11 @@
   #topo-conversa button{ padding:8px 16px; border-radius:8px; border:none; font-weight:600; cursor:pointer; }
   #btn-toggle-humano.assumir{ background:var(--laranja); color:#2A1B04; }
   #btn-toggle-humano.liberar{ background:var(--verde); color:#0D2B22; }
+  #btn-excluir-conversa{ background:transparent; border:1px solid var(--vermelho); color:var(--vermelho); }
+  #btn-excluir-conversa:hover{ background:var(--vermelho); color:#fff; }
+
+  #link-exportar-csv{ display:inline-block; margin-top:6px; font-size:11.5px; color:var(--verde); text-decoration:none; }
+  #link-exportar-csv:hover{ text-decoration:underline; }
 
   #msgs{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:10px; }
   .msg{ max-width:70%; padding:9px 13px; border-radius:12px; font-size:14px; }
@@ -106,7 +111,10 @@
   </div>
   <div id="view-conversas" class="ativa">
     <div id="lista">
-      <div id="resumo-topo-lista"></div>
+      <div id="resumo-topo-lista">
+        <div id="resumo-contador"></div>
+        <a id="link-exportar-csv" href="#" target="_blank">⬇️ Exportar leads (CSV/Excel)</a>
+      </div>
       <div id="lista-scroll"></div>
     </div>
     <div id="conversa">
@@ -120,6 +128,7 @@
   let ws = null;
   let conversas = [];
   let selecionada = null;
+  let senhaAtual = null;
   // Rascunho do que o operador tá digitando pra cada conversa, guardado em
   // memória (sobrevive a trocar de conversa e voltar, ou a lista atualizar
   // sozinha — sem isso o texto digitado sumia toda vez que montarPainel()
@@ -182,12 +191,15 @@
 
   function entrar(){
     const senha = document.getElementById('input-senha').value;
+    senhaAtual = senha;
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${protocolo}://${location.host}/ws/painel?senha=${encodeURIComponent(senha)}`);
 
     ws.onopen = () => {
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
+      const linkCsv = document.getElementById('link-exportar-csv');
+      if(linkCsv) linkCsv.href = `/exportar-leads.csv?senha=${encodeURIComponent(senhaAtual)}`;
     };
     ws.onclose = (ev) => {
       if(ev.code === 4001) alert('Senha incorreta.');
@@ -198,6 +210,15 @@
       const data = JSON.parse(event.data);
       if(data.type === 'lista'){
         conversas = data.conversas;
+        // Se a conversa aberta foi excluída (por mim ou por outro operador
+        // em outra sessão), volta o painel pro estado vazio em vez de ficar
+        // mostrando uma conversa fantasma que não existe mais.
+        if(selecionada && !conversas.find(c => c.session_id === selecionada)){
+          selecionada = null;
+          delete rascunhos[selecionada];
+          document.getElementById('conversa').innerHTML = '<div id="vazio">Selecione uma conversa à esquerda</div>';
+          document.getElementById('view-conversas').classList.remove('ver-conversa');
+        }
         renderLista();
         // Antes, uma atualização de lista (ex: clicar "Assumir conversa")
         // só atualizava a barra lateral — o painel da conversa aberta não
@@ -272,7 +293,7 @@
   // escondido dentro da aba Relatórios, e o operador (Sandro/Diegão) tem que
   // ver isso de cara sem precisar trocar de aba.
   function atualizarResumoTopoLista(){
-    const el = document.getElementById('resumo-topo-lista');
+    const el = document.getElementById('resumo-contador');
     if(!el) return;
     const hojeStr = new Date().toDateString();
     const leadsHoje = conversas.filter(c => c.criada_em && new Date(c.criada_em * 1000).toDateString() === hojeStr).length;
@@ -310,6 +331,7 @@
             ${ESTAGIOS.map(e => `<option value="${e}" ${e===c.estagio?'selected':''}>${e.replace(/_/g,' ')}</option>`).join('')}
           </select>
           <button id="btn-toggle-humano" class="${humanoAtivo ? 'liberar' : 'assumir'}">${humanoAtivo ? 'Devolver pra IA' : 'Assumir conversa'}</button>
+          <button id="btn-excluir-conversa" type="button" title="Excluir esta conversa">🗑️ Excluir</button>
         </div>
       </div>
       <div id="msgs"></div>
@@ -350,6 +372,13 @@
     document.getElementById('btn-toggle-humano').addEventListener('click', (e) => {
       const acao = e.target.classList.contains('liberar') ? 'liberar_para_ia' : 'assumir';
       ws.send(JSON.stringify({acao, session_id: sessionId}));
+    });
+    document.getElementById('btn-excluir-conversa').addEventListener('click', () => {
+      const c = conversas.find(x => x.session_id === sessionId);
+      const nome = c ? (c.lead_name || ('Lead ' + sessionId.slice(0,8))) : sessionId;
+      if(!confirm(`Excluir a conversa de "${nome}" pra sempre? Isso apaga o histórico e não pode ser desfeito.`)) return;
+      ws.send(JSON.stringify({acao:'excluir', session_id: sessionId}));
+      delete rascunhos[sessionId];
     });
     const form = document.getElementById('form-operador');
     const input = document.getElementById('input-operador');
