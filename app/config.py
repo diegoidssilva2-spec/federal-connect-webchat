@@ -27,9 +27,18 @@ LINK_ATIVACAO_FEDERAL = os.environ.get(
     "https://wa.me/5508008882629?text=Vim%20do%20site%20da%20Federal%20Associados!"
 )
 
-# Senha simples pro painel do operador (Sandro/Marcos). Trocar por login de
+# Senha simples pro painel do operador (Gabriel/Marcos). Trocar por login de
 # verdade quando sair do MVP de teste.
 OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "federal2026")
+
+# Consultor humano que assume a ativação de chip físico (handoff feito pela
+# IA — ver knowledge_base.py, seção HANDOFF DE ATIVAÇÃO). Nome e WhatsApp
+# configuráveis por variável de ambiente pra trocar sem precisar editar
+# código (ex: se trocar de consultor de novo no futuro).
+CONSULTOR_HUMANO_NOME = os.environ.get("CONSULTOR_HUMANO_NOME", "Gabriel")
+CONSULTOR_HUMANO_WHATSAPP_NUMERO = os.environ.get(
+    "CONSULTOR_HUMANO_WHATSAPP_NUMERO", "5513996254206"
+)
 
 # Persistência de leads em disco — CRM leve de hoje (Fase 0). Todo lead
 # capturado (nome/telefone/origem/estágio) é regravado nesse CSV a cada
