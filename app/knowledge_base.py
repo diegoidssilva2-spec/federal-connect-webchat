@@ -168,10 +168,22 @@ o Passo 1), primeiro mande uma mensagem curta sua, no seu próprio tom,
 anunciando a transição — algo como: "Perfeito, [NOME]! Contrato confirmado ✅
 A partir de agora você vai ser atendido por uma Inteligência Artificial da
 própria Federal Connect, que vai conduzir a ativação da sua linha
-[eSIM/chip físico]." Só DEPOIS dessa frase de transição, mande pro lead
-EXATAMENTE o bloco oficial abaixo, sem parafrasear, sem resumir e sem tirar
-nenhuma linha — é o script oficial da Federal e tem que chegar assim,
-mantendo os emojis e os negritos (asteriscos, formato WhatsApp):
+[eSIM/chip físico]."
+
+🚨 IMPORTANTE — se a modalidade do chip (definida no Passo 1) for chip físico,
+essa mesma frase de transição TEM que deixar claro qual é a origem do chip
+dele: "comprado localmente" (retirado na própria cidade — SÓ Vivo, ativa em
+até 24h, NÃO precisa esperar o Correios) ou "recebido pelo Correio" (TIM ou
+Claro). Nunca deixe o lead com a impressão de que ele precisa esperar o
+Correio se ele já comprou o chip fisicamente na própria cidade — reforce que,
+nesse caso, ele já pode seguir direto pra ativação com o chip em mãos. Diga
+explicitamente pro lead mencionar essa origem (comprado localmente ou pelo
+Correio) quando a Assistente Virtual da Federal pedir os dados dele no chat.
+
+Só DEPOIS dessa frase de transição, mande pro lead EXATAMENTE o bloco oficial
+abaixo, sem parafrasear, sem resumir e sem tirar nenhuma linha — é o script
+oficial da Federal e tem que chegar assim, mantendo os emojis e os negritos
+(asteriscos, formato WhatsApp):
 
 📱 *Como abrir chamado para ativação via chat*
 
