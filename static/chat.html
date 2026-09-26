@@ -4,6 +4,22 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Federal Conect — Fale com a gente</title>
+<script>
+  // Pixel da Meta — o servidor troca o marcador pelo ID (env META_PIXEL_ID).
+  // Se ficar vazio, fbq vira função muda e o chat funciona normal.
+  window.META_PIXEL_ID = '__META_PIXEL_ID__';
+  if (/^\d+$/.test(window.META_PIXEL_ID)) {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', window.META_PIXEL_ID);
+    fbq('track', 'PageView');
+  } else {
+    window.fbq = function(){};
+  }
+</script>
 <style>
   :root{
     --bg:#2B2050; --bg-2:#372A66; --verde:#3DD9A0; --verde-forte:#5EEBB8;
@@ -67,6 +83,12 @@
   #btn-anexar:hover{ border-color:var(--verde); background:none; }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
+  #respostas-rapidas{ display:flex; flex-direction:column; gap:8px; align-self:flex-start; max-width:88%; }
+  #respostas-rapidas button{
+    background:rgba(61,217,160,0.12); color:var(--texto); border:1px solid var(--verde);
+    border-radius:18px; padding:10px 14px; font-size:14px; font-weight:500; text-align:left;
+  }
+  #respostas-rapidas button:hover{ background:rgba(61,217,160,0.25); }
   #preview-imagem{ display:none; padding:0 14px 10px; background:var(--bg-2); }
   #preview-imagem img{ max-height:70px; border-radius:6px; }
   #preview-imagem .remover{ color:var(--texto-fraco); font-size:12px; margin-left:10px; cursor:pointer; }
@@ -192,10 +214,46 @@
   const params = new URLSearchParams(location.search);
   let sessionId = localStorage.getItem('federal_session_id') || params.get('session_id') || '';
 
-  const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${protocolo}://${location.host}/ws/chat${sessionId ? '?session_id=' + sessionId : ''}`);
+  // Origem do anúncio: o link dos anúncios leva ?utm_campaign=...&utm_content=...
+  // e isso vai pro painel/CSV, pra saber qual conjunto/imagem trouxe o lead.
+  const origemAnuncio = [params.get('utm_source'), params.get('utm_campaign'), params.get('utm_content')]
+    .filter(Boolean).join('/');
+  const qs = new URLSearchParams();
+  if(sessionId) qs.set('session_id', sessionId);
+  if(origemAnuncio) qs.set('origem', origemAnuncio);
 
-  const MENSAGEM_BOAS_VINDAS = 'Oi! 👋 Eu sou o consultor digital da Federal Conect. Me conta, você já conhece nossos planos de internet ou quer que eu te apresente as opções?';
+  const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${protocolo}://${location.host}/ws/chat${qs.toString() ? '?' + qs.toString() : ''}`);
+
+  // 26/09: 219 de 223 visitantes abriam o chat e nunca digitavam nada. A
+  // abertura agora fala direto com quem trabalha na rua e oferece botões de
+  // um toque — mandar a primeira mensagem fica sem esforço nenhum.
+  const MENSAGEM_BOAS_VINDAS = 'Oi! 👋 Aqui é o consultor da Federal Conect.\nInternet que não acaba no meio da corrida, a partir de R$ 69,90 — Vivo, Claro ou TIM, sem consulta ao SPC/Serasa.\nToca numa opção aí embaixo pra gente começar:';
+  const RESPOSTAS_RAPIDAS = [
+    '🛵 Trabalho com app/entregas e minha internet acaba',
+    '💰 Quero ver os planos e preços',
+    '❓ Tenho uma dúvida antes',
+  ];
+
+  let jaEnviouMensagem = false;
+
+  function mostrarRespostasRapidas(){
+    const wrap = document.createElement('div');
+    wrap.id = 'respostas-rapidas';
+    RESPOSTAS_RAPIDAS.forEach(txt => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = txt;
+      b.addEventListener('click', () => enviarTexto(txt));
+      wrap.appendChild(b);
+    });
+    mensagensEl.appendChild(wrap);
+    mensagensEl.scrollTop = mensagensEl.scrollHeight;
+  }
+  function removerRespostasRapidas(){
+    const el = document.getElementById('respostas-rapidas');
+    if(el) el.remove();
+  }
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -207,10 +265,15 @@
       // de volta o que já tinha sido conversado, pra não perder tudo.
       // Se vier vazio, é sessão nova mesmo: mostra a mensagem de boas-vindas.
       if(data.mensagens && data.mensagens.length){
+        jaEnviouMensagem = true;
         data.mensagens.forEach(m => addMsg(m.remetente, m.texto));
       } else if(mensagensEl.children.length === 0){
         addMsg('ia', MENSAGEM_BOAS_VINDAS);
+        mostrarRespostasRapidas();
       }
+    } else if(data.type === 'evento'){
+      // Servidor avisa quando a IA capturou o WhatsApp do lead.
+      if(data.nome === 'Lead') fbq('track', 'Lead');
     } else if(data.type === 'mensagem'){
       esconderDigitando();
       travarEnvio(false);
@@ -220,8 +283,18 @@
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const texto = input.value.trim();
+    enviarTexto(input.value.trim());
+  });
+
+  function enviarTexto(texto){
     if(!texto && !imagemPendente) return;
+    if(ws.readyState !== WebSocket.OPEN) return;
+
+    removerRespostasRapidas();
+    if(!jaEnviouMensagem){
+      jaEnviouMensagem = true;
+      fbq('track', 'Contact');
+    }
 
     addMsg('lead', texto, imagemPendente ? imagemPendente.dataUrl : null);
 
@@ -238,7 +311,7 @@
     imagemPendente = null;
     inputArquivo.value = '';
     previewWrap.style.display = 'none';
-  });
+  }
 </script>
 
 </body>

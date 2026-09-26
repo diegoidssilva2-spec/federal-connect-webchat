@@ -54,3 +54,10 @@ LEADS_CSV_PATH = os.environ.get("LEADS_CSV_PATH", "leads_federal_connect.csv")
 # Apps Script, etc) sem precisar mexer em código aqui de novo. Deixar vazio
 # (padrão) simplesmente desativa o envio.
 CRM_WEBHOOK_URL = os.environ.get("CRM_WEBHOOK_URL", "")
+
+# Pixel da Meta (26/09) — ID do conjunto de dados criado no Gerenciador de
+# Eventos. Sem essa variável o chat funciona igual, só não dispara Pixel.
+# Eventos: PageView (abriu o chat), Contact (mandou a 1ª mensagem) e Lead
+# (a IA capturou o WhatsApp do lead). Serve pra otimizar a campanha por
+# lead de verdade e fazer remarketing de quem abriu e não conversou.
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()

@@ -17,11 +17,11 @@ import re
 import time
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
-from app.config import OPERATOR_PASSWORD
+from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
@@ -55,7 +55,12 @@ async def health():
 
 @app.get("/")
 async def pagina_chat():
-    return FileResponse("static/chat.html")
+    # Injeta o ID do Pixel da Meta (env META_PIXEL_ID) no HTML. Vazio = o
+    # script do Pixel nem carrega, o chat segue funcionando normal.
+    with open("static/chat.html", encoding="utf-8") as f:
+        html = f.read()
+    pixel_id = META_PIXEL_ID if META_PIXEL_ID.isdigit() else ""
+    return HTMLResponse(html.replace("__META_PIXEL_ID__", pixel_id))
 
 
 @app.get("/painel")
@@ -104,7 +109,7 @@ def _extrair_texto_mensagem(conteudo) -> str:
     return "[imagem]"
 
 
-async def _atualizar_perfil_lead(conversa: Conversa) -> None:
+async def _atualizar_perfil_lead(conversa: Conversa) -> bool:
     """
     Chama a extração via IA (agent.py) e funde o resultado na conversa —
     só sobrescreve um campo quando a IA devolveu algo não-nulo, então
@@ -121,6 +126,7 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> None:
     perfil = await asyncio.to_thread(extrair_perfil_lead_via_ia, conversa.history)
 
     mudou = False
+    telefone_antes = conversa.lead_phone
 
     if perfil.get("nome") and perfil["nome"] != conversa.lead_name:
         conversa.lead_name = perfil["nome"]
@@ -132,7 +138,9 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> None:
             conversa.lead_phone = apenas_digitos
             mudou = True
 
-    if perfil.get("origem") and perfil["origem"] != conversa.lead_origem:
+    # Origem vinda do link do anúncio (utm) é dado exato — a IA não sobrescreve.
+    origem_do_anuncio = (conversa.lead_origem or "").startswith("anúncio:")
+    if perfil.get("origem") and perfil["origem"] != conversa.lead_origem and not origem_do_anuncio:
         conversa.lead_origem = perfil["origem"]
         mudou = True
 
@@ -145,6 +153,20 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> None:
     # roda em thread separada (I/O de disco/rede) pra não travar o chat.
     if mudou:
         await asyncio.to_thread(registrar_atualizacao_lead, conversa)
+
+    # True só na primeira vez que o WhatsApp do lead aparece — é o gatilho
+    # do evento "Lead" do Pixel (um disparo por lead, sem duplicar).
+    return bool(conversa.lead_phone) and not telefone_antes
+
+
+async def _avisar_lead_capturado(conversa: Conversa) -> None:
+    """Manda pro navegador do lead disparar o evento Lead do Pixel."""
+    if conversa.websocket_visitante is None:
+        return
+    try:
+        await conversa.websocket_visitante.send_json({"type": "evento", "nome": "Lead"})
+    except Exception:
+        pass
 
 
 def _historico_para_payload(conversa: Conversa) -> list[dict]:
@@ -217,12 +239,21 @@ async def _enviar_mensagem_para_operadores_da_conversa(conversa: Conversa, remet
 # ---------------------------------------------------------------------------
 
 @app.websocket("/ws/chat")
-async def ws_chat(websocket: WebSocket, session_id: str | None = Query(default=None)):
+async def ws_chat(
+    websocket: WebSocket,
+    session_id: str | None = Query(default=None),
+    origem: str | None = Query(default=None),
+):
     await websocket.accept()
 
     conversa = obter(session_id) if session_id else None
     if conversa is None:
         conversa = nova_conversa()
+        # utm_campaign/utm_content do link do anúncio (ex: "fb/app-entregas/
+        # vivo-40g") — deixa o painel/CSV mostrar qual conjunto e qual imagem
+        # trouxe cada lead, pra comparar de verdade o que converte.
+        if origem:
+            conversa.lead_origem = "anúncio:" + re.sub(r"[^\w\-/. ]", "", origem)[:80]
 
     conversa.websocket_visitante = websocket
     await websocket.send_json({"type": "sessao", "session_id": conversa.session_id})
@@ -258,7 +289,8 @@ async def ws_chat(websocket: WebSocket, session_id: str | None = Query(default=N
                 # notas via IA (não é regex fixo — pega jeito natural de
                 # falar, tipo "o Bruno é motorista de app", e atualiza toda
                 # vez que a pessoa der mais informação, não só na primeira).
-                await _atualizar_perfil_lead(conversa)
+                if await _atualizar_perfil_lead(conversa):
+                    await _avisar_lead_capturado(conversa)
                 await _persistir(conversa)
                 await _broadcast_painel()
                 continue
@@ -286,7 +318,8 @@ async def ws_chat(websocket: WebSocket, session_id: str | None = Query(default=N
             # CRM leve: mesmo refresh de nome/telefone/origem/notas via IA
             # que roda no ramo "humano_ativo" acima — mantém o painel em dia
             # a cada mensagem, seja quem for que está respondendo o lead.
-            await _atualizar_perfil_lead(conversa)
+            if await _atualizar_perfil_lead(conversa):
+                await _avisar_lead_capturado(conversa)
 
             # Classificação automática — a IA decide o estágio sozinha,
             # ninguém no painel precisa clicar pra mudar isso manualmente.
