@@ -70,3 +70,12 @@ CRM_WEBHOOK_URL = os.environ.get("CRM_WEBHOOK_URL", "")
 # (a IA capturou o WhatsApp do lead). Serve pra otimizar a campanha por
 # lead de verdade e fazer remarketing de quem abriu e não conversou.
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()
+
+# Service account do Google Cloud (28/09, projeto FLYER-Automacao) — dá
+# acesso de leitura/escrita direto em planilhas e pastas do Drive que forem
+# compartilhadas com o e-mail dela como Editor. Usado por app/google_service.py.
+# Valor esperado: o conteúdo INTEIRO do arquivo JSON da chave, como string
+# (cola o JSON todo numa variável de ambiente só). Vazio = os recursos que
+# dependem dela (edição de planilha existente, busca de imagem de plano no
+# Drive) ficam desativados sem quebrar o resto do projeto.
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
