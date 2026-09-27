@@ -13,10 +13,18 @@ import csv
 import io
 import json
 import logging
+import mimetypes
 import re
 import time
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Header
+
+# 27/09: o Python desta imagem/SO não tem ".webp" no banco de tipos padrão
+# (mimetypes) — o StaticFiles servia a logo do avatar como
+# application/octet-stream em vez de image/webp, e alguns navegadores/
+# webviews recusavam exibir a imagem por causa disso (avatar sumia). Registro
+# explícito garante o Content-Type certo em qualquer ambiente.
+mimetypes.add_type("image/webp", ".webp")
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -60,12 +68,21 @@ async def pagina_chat():
     with open("static/chat.html", encoding="utf-8") as f:
         html = f.read()
     pixel_id = META_PIXEL_ID if META_PIXEL_ID.isdigit() else ""
-    return HTMLResponse(html.replace("__META_PIXEL_ID__", pixel_id))
+    # 27/09: sem isso, alguns navegadores/webviews de celular guardam a
+    # página por conta própria (sem servidor mandar nenhuma instrução) e o
+    # lead/operador fica preso numa versão de antes de um ajuste — foi o
+    # motivo do Diegão não ver mudança nenhuma num teste. no-store força
+    # buscar a versão atual toda vez; a página é pequena, não pesa.
+    return HTMLResponse(
+        html.replace("__META_PIXEL_ID__", pixel_id),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/painel")
 async def pagina_painel():
-    return FileResponse("static/admin.html")
+    # Mesmo motivo do no-store na página do chat (ver pagina_chat acima).
+    return FileResponse("static/admin.html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/exportar-leads.csv")
