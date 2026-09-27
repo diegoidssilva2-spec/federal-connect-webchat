@@ -51,35 +51,12 @@
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
   }
-  /* Fibra óptica "correndo" por cima da foto (27/09, pedido Diegão) — CSS
-     puro, zero custo de crédito: linhas deslizando em loop, reforçando o
-     movimento que a arte estática sozinha não tem. */
-  header::before, header::after{
-    content:''; position:absolute; inset:0; pointer-events:none;
-    background-repeat:repeat; opacity:.35;
-    background-image: repeating-linear-gradient(
-      100deg,
-      transparent 0 40px,
-      rgba(61,217,160,0.55) 40px 42px,
-      transparent 42px 90px,
-      rgba(94,235,184,0.35) 90px 92px,
-      transparent 92px 160px
-    );
-    background-size:220px 100%;
-    animation: fibra-correndo 5s linear infinite;
-  }
-  header::after{
-    opacity:.25; animation-duration:8s; animation-direction:reverse;
-    background-image: repeating-linear-gradient(
-      100deg,
-      transparent 0 60px,
-      rgba(140,95,224,0.6) 60px 63px,
-      transparent 63px 150px
-    );
-    background-size:300px 100%;
-  }
-  @keyframes fibra-correndo{ from{ background-position:0 0; } to{ background-position:-220px 0; } }
-  header > *{ position:relative; z-index:1; } /* conteúdo do cabeçalho acima das linhas */
+  /* Fibra óptica em CSS retirada (27/09, pedido Diegão) — as linhas retas
+     sem ondulação ficaram estranhas por cima da foto. Fica pra uma próxima
+     evolução (fibra de verdade, com curva, talvez direto na arte ou em
+     vídeo). header > * continua útil: mantém o avatar acima do degradê da
+     foto de fundo. */
+  header > *{ position:relative; z-index:1; }
 
   /* Faixa de planos passando (27/09, pedido Diegão) — marquee em CSS puro,
      sem crédito de IA. Preços vêm do mesmo texto que a IA usa
@@ -90,19 +67,21 @@
     padding:7px 0; white-space:nowrap;
   }
   #faixa-planos .trilho{
-    /* 22s (original) → 44s (metade, 1º pedido) → 59s (menos 1/3 de novo,
-       27/09) — cada ajuste é sobre a velocidade JÁ reduzida, não a original. */
-    display:inline-flex; gap:28px; animation: passar 59s linear infinite;
+    /* 22s (original) → 44s → 59s → 79s (mais 1/3 mais devagar, 27/09) —
+       cada ajuste é sobre a velocidade JÁ reduzida, não a original. */
+    display:inline-flex; gap:28px; animation: passar 79s linear infinite;
     padding-left:100%;
   }
   #faixa-planos:hover .trilho, #faixa-planos:active .trilho{ animation-play-state:paused; }
   #faixa-planos .item{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--texto); }
   #faixa-planos .item b{ color:var(--verde-forte); }
-  /* Item da marca (27/09): antes ficava fixo no cabeçalho, agora circula
-     junto com os planos — um pouco maior/mais forte pra não passar
-     despercebido no meio dos preços. */
-  #faixa-planos .item.marca{ font-size:13.5px; font-weight:600; }
-  #faixa-planos .item.marca b{ color:var(--texto); }
+  /* Item da marca (27/09): circula junto com os planos. Negrito neon verde
+     a pedido do Diegão — text-shadow em camadas simula o brilho neon. */
+  #faixa-planos .item.marca{ font-size:13.5px; }
+  #faixa-planos .item.marca b{
+    color:var(--verde-forte); font-weight:800; letter-spacing:.3px;
+    text-shadow: 0 0 4px rgba(94,235,184,0.9), 0 0 10px rgba(61,217,160,0.7), 0 0 18px rgba(61,217,160,0.4);
+  }
   #faixa-planos .sep{ color:var(--texto-fraco); opacity:.5; }
   @keyframes passar{ from{ transform:translateX(0); } to{ transform:translateX(-100%); } }
   @media (prefers-reduced-motion: reduce){
