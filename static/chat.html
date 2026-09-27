@@ -38,17 +38,25 @@
   }
   header{
     position:relative; overflow:hidden;
-    padding:16px 20px; background:rgba(55,42,102,0.85); backdrop-filter: blur(6px);
+    /* Arte escolhida pelo Diegão (banner gerado no Magnific, 27/09) — salva
+       localmente em static/img (não depende do link do Magnific, que
+       expira). Cobre o cabeçalho inteiro; degradê escuro por cima garante
+       que o título continue legível em qualquer parte da imagem. Pedido:
+       depois vira vídeo/animação — por ora fica como foto parada. */
+    background-image:
+      linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
+      url('/static/img/banner-cabecalho.jpg');
+    background-size:cover; background-position:center;
+    padding:16px 20px; backdrop-filter: blur(2px);
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
   }
-  /* Fibra óptica "correndo" no cabeçalho (27/09, pedido Diegão) — feito em
-     CSS puro (zero custo de crédito de IA, mais leve que imagem/vídeo):
-     linhas diagonais em degradê que deslizam em loop, estilo "luz passando
-     por fibra". Duas camadas com velocidades diferentes pra dar profundidade. */
+  /* Fibra óptica "correndo" por cima da foto (27/09, pedido Diegão) — CSS
+     puro, zero custo de crédito: linhas deslizando em loop, reforçando o
+     movimento que a arte estática sozinha não tem. */
   header::before, header::after{
     content:''; position:absolute; inset:0; pointer-events:none;
-    background-repeat:repeat; opacity:.5;
+    background-repeat:repeat; opacity:.35;
     background-image: repeating-linear-gradient(
       100deg,
       transparent 0 40px,
@@ -82,7 +90,8 @@
     padding:7px 0; white-space:nowrap;
   }
   #faixa-planos .trilho{
-    display:inline-flex; gap:28px; animation: passar 22s linear infinite;
+    /* 44s = metade da velocidade original (22s), pedido do Diegão (27/09). */
+    display:inline-flex; gap:28px; animation: passar 44s linear infinite;
     padding-left:100%;
   }
   #faixa-planos:hover .trilho, #faixa-planos:active .trilho{ animation-play-state:paused; }
@@ -129,11 +138,25 @@
     padding:0 20px; font-weight:600; cursor:pointer; flex-shrink:0;
   }
   button:hover{ background:var(--verde-forte); }
-  #btn-anexar{
-    background:none; border:1px solid rgba(155,89,232,0.3); color:var(--texto);
-    width:44px; height:44px; border-radius:10px; padding:0; font-size:18px; flex-shrink:0;
+  /* Botão de enviar "mais robusto" (27/09, pedido Diegão): mais alto, texto
+     maior, sombra e leve efeito de toque — deixa de parecer um botão fino
+     genérico e passa mais confiança de "clique aqui". */
+  button[type="submit"]{
+    height:46px; padding:0 24px; font-size:15px; font-weight:700;
+    box-shadow:0 3px 10px rgba(61,217,160,0.35);
+    transition:transform .1s ease, box-shadow .1s ease;
   }
-  #btn-anexar:hover{ border-color:var(--verde); background:none; }
+  button[type="submit"]:active{ transform:translateY(1px); box-shadow:0 1px 4px rgba(61,217,160,0.35); }
+  /* Ícone de anexar na mesma cor do botão de enviar (27/09, pedido Diegão)
+     — antes era só contorno, agora preenchido igual ao Enviar pra parecer
+     que os dois pertencem ao mesmo grupo de ação. */
+  #btn-anexar{
+    background:var(--verde); border:none; color:#0D2B22;
+    width:46px; height:46px; border-radius:10px; padding:0; font-size:18px; flex-shrink:0;
+    box-shadow:0 3px 10px rgba(61,217,160,0.35);
+  }
+  #btn-anexar:hover{ background:var(--verde-forte); }
+  #btn-anexar:active{ transform:translateY(1px); }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
   #respostas-rapidas{ display:flex; flex-direction:column; gap:8px; align-self:flex-start; max-width:88%; }
