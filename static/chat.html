@@ -90,13 +90,19 @@
     padding:7px 0; white-space:nowrap;
   }
   #faixa-planos .trilho{
-    /* 44s = metade da velocidade original (22s), pedido do Diegão (27/09). */
-    display:inline-flex; gap:28px; animation: passar 44s linear infinite;
+    /* 22s (original) → 44s (metade, 1º pedido) → 59s (menos 1/3 de novo,
+       27/09) — cada ajuste é sobre a velocidade JÁ reduzida, não a original. */
+    display:inline-flex; gap:28px; animation: passar 59s linear infinite;
     padding-left:100%;
   }
   #faixa-planos:hover .trilho, #faixa-planos:active .trilho{ animation-play-state:paused; }
   #faixa-planos .item{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--texto); }
   #faixa-planos .item b{ color:var(--verde-forte); }
+  /* Item da marca (27/09): antes ficava fixo no cabeçalho, agora circula
+     junto com os planos — um pouco maior/mais forte pra não passar
+     despercebido no meio dos preços. */
+  #faixa-planos .item.marca{ font-size:13.5px; font-weight:600; }
+  #faixa-planos .item.marca b{ color:var(--texto); }
   #faixa-planos .sep{ color:var(--texto-fraco); opacity:.5; }
   @keyframes passar{ from{ transform:translateX(0); } to{ transform:translateX(-100%); } }
   @media (prefers-reduced-motion: reduce){
@@ -104,12 +110,23 @@
   }
 
   header .avatar{
+    position:relative;
     width:38px; height:38px; border-radius:50%;
     background: radial-gradient(circle at 30% 30%, var(--verde-forte), var(--verde) 55%, #3DD9A0);
     display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
     color:#0D2B22; flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
   }
-  header .ponto{ width:10px; height:10px; border-radius:50%; background:var(--verde-forte); }
+  /* Bolinha de status no canto do avatar (27/09) — substitui o texto
+     "online agora"/"reconectando…" que ficava no cabeçalho, removido daqui
+     junto com o nome (foram pra faixa de planos). Verde = conectado,
+     laranja piscando = reconectando. */
+  header .ponto{
+    position:absolute; bottom:-1px; right:-1px; width:11px; height:11px;
+    border-radius:50%; background:var(--verde-forte);
+    border:2px solid var(--bg-2); transition:background .2s;
+  }
+  header .ponto.reconectando{ background:#E0A93D; animation:piscar-ponto 1s infinite; }
+  @keyframes piscar-ponto{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
   header .titulo{ font-weight:600; font-size:15px; }
   header .sub{ font-size:12px; color:var(--texto-fraco); }
 
@@ -184,15 +201,17 @@
 <body>
 
 <header>
-  <div class="avatar">FC</div>
-  <div>
-    <div class="titulo">Federal Conect</div>
-    <div class="sub">Inteligência artificial · online agora</div>
-  </div>
+  <div class="avatar">FC<span class="ponto" id="status-ponto"></span></div>
 </header>
 
+<!-- 27/09 (pedido Diegão): "Federal Conect" e o status saíram do cabeçalho
+     fixo e entraram na faixa que passa — o cabeçalho fica só com a foto/
+     logo, e o nome da marca circula junto com os planos ("é nosso portal
+     de vendas, temos que explorar ao máximo" — a marca some do estático e
+     vira parte do conteúdo que sempre está se movendo). -->
 <div id="faixa-planos">
   <div class="trilho">
+    <span class="item marca">⚡ <b>Federal Connect</b> · Inteligência artificial · online agora</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
@@ -200,9 +219,11 @@
     <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
+    <span class="item">🚚 <b>Frete grátis</b> para todo o Brasil</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
     <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span><span class="sep">•</span>
     <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
+    <span class="item marca">⚡ <b>Federal Connect</b> · Inteligência artificial · online agora</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
@@ -210,6 +231,7 @@
     <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
+    <span class="item">🚚 <b>Frete grátis</b> para todo o Brasil</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
     <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span>
   </div>
@@ -259,7 +281,7 @@
   function addMsg(remetente, texto, imagemDataUrl){
     const div = document.createElement('div');
     div.className = 'msg ' + remetente;
-    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'IA Federal' : 'Atendente'}</div>`;
+    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'IA Federal Connect' : 'Atendente'}</div>`;
     const imgHtml = imagemDataUrl ? `<img src="${imagemDataUrl}" />` : '';
     const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     div.innerHTML = tag + formatarMensagem(texto) + imgHtml + `<div class="hora">${hora}</div>`;
@@ -324,8 +346,12 @@
   const origemAnuncio = [params.get('utm_source'), params.get('utm_campaign'), params.get('utm_content')]
     .filter(Boolean).join('/');
   const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-  const subtituloEl = document.querySelector('header .sub');
-  const SUBTITULO_ONLINE = subtituloEl.textContent;
+  // 27/09: o texto "online agora"/"reconectando…" saiu do cabeçalho (foi
+  // removido junto com o nome) — o status agora é só a bolinha no avatar.
+  const statusPontoEl = document.getElementById('status-ponto');
+  function marcarStatus(reconectando){
+    statusPontoEl.classList.toggle('reconectando', reconectando);
+  }
 
   // Reconexão automática (27/09): antes existia UMA conexão só, criada no
   // carregamento. Se ela caísse (celular em segundo plano, troca de rede,
@@ -348,7 +374,7 @@
     este.onopen = () => {
       tentativas = 0;
       ultimoSinal = Date.now();
-      subtituloEl.textContent = SUBTITULO_ONLINE;
+      marcarStatus(false);
     };
     este.onmessage = (event) => {
       if(este !== ws) return; // conexão antiga, já substituída
@@ -357,7 +383,7 @@
     };
     este.onclose = () => {
       if(este !== ws) return;
-      subtituloEl.textContent = 'reconectando…';
+      marcarStatus(true);
       const espera = Math.min(1000 * 2 ** tentativas, 10000);
       tentativas++;
       setTimeout(() => { if(este === ws) conectar(); }, espera);
@@ -456,7 +482,7 @@
     // reconecta — ela sai sozinha assim que a conexão voltar.
     if(!ws || ws.readyState !== WebSocket.OPEN){
       pendente = texto;
-      subtituloEl.textContent = 'reconectando…';
+      marcarStatus(true);
       if(!ws || ws.readyState !== WebSocket.CONNECTING) conectar();
       return;
     }

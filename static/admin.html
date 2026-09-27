@@ -548,7 +548,7 @@
   // Rótulo de quem falou (27/09, pedido Diegão): "IA Federal" em vez de
   // "ia", e o nome do lead (quando a IA já capturou) em vez de "lead".
   function rotuloRemetente(remetente){
-    if(remetente === 'ia') return 'IA Federal';
+    if(remetente === 'ia') return 'IA Federal Connect';
     if(remetente === 'operador') return 'Operador';
     const c = conversas.find(x => x.session_id === selecionada);
     const nome = (c && c.lead_name) || 'Lead';
