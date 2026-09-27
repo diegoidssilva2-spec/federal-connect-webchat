@@ -91,9 +91,13 @@
   header .avatar{
     position:relative;
     width:38px; height:38px; border-radius:50%;
-    background: radial-gradient(circle at 30% 30%, var(--verde-forte), var(--verde) 55%, #3DD9A0);
-    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
-    color:#0D2B22; flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
+    /* Logo do chip gerado no Magnific (27/09) substitui o "FC" — o texto
+       continua no HTML como fallback (aparece 1 frame antes da imagem
+       carregar, ou se o arquivo falhar por algum motivo). */
+    background-image: url('/static/img/avatar-chip.jpg');
+    background-size:cover; background-position:center;
+    color:transparent; font-size:0; /* esconde o "FC" quando a imagem carrega */
+    flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
   }
   /* Bolinha de status no canto do avatar (27/09) — substitui o texto
      "online agora"/"reconectando…" que ficava no cabeçalho, removido daqui
@@ -143,15 +147,19 @@
     transition:transform .1s ease, box-shadow .1s ease;
   }
   button[type="submit"]:active{ transform:translateY(1px); box-shadow:0 1px 4px rgba(61,217,160,0.35); }
-  /* Ícone de anexar na mesma cor do botão de enviar (27/09, pedido Diegão)
-     — antes era só contorno, agora preenchido igual ao Enviar pra parecer
-     que os dois pertencem ao mesmo grupo de ação. */
+  /* Ícone de anexar em 3D (27/09, pedido Diegão) — a primeira versão pintou
+     o FUNDO do botão de verde igual ao Enviar, mas o ícone gerado é da
+     MESMA cor verde/neon — ficava verde em cima de verde, sumia. Correção:
+     fundo volta a ser neutro (contorno, igual era antes), só o ícone (a
+     imagem) é novo; ele aparece por conta própria. */
   #btn-anexar{
-    background:var(--verde); border:none; color:#0D2B22;
-    width:46px; height:46px; border-radius:10px; padding:0; font-size:18px; flex-shrink:0;
-    box-shadow:0 3px 10px rgba(61,217,160,0.35);
+    background:rgba(36,26,68,0.6); border:1px solid rgba(155,89,232,0.3);
+    width:46px; height:46px; border-radius:10px; padding:0; flex-shrink:0;
+    background-image:url('/static/img/icone-anexar.png');
+    background-repeat:no-repeat; background-position:center; background-size:60%;
+    color:transparent; font-size:0; /* esconde o 📎 quando a imagem carrega */
   }
-  #btn-anexar:hover{ background:var(--verde-forte); }
+  #btn-anexar:hover{ border-color:var(--verde); }
   #btn-anexar:active{ transform:translateY(1px); }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
@@ -190,7 +198,7 @@
      vira parte do conteúdo que sempre está se movendo). -->
 <div id="faixa-planos">
   <div class="trilho">
-    <span class="item marca">⚡ <b>Federal Connect</b> · Inteligência artificial · online agora</span><span class="sep">•</span>
+    <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
@@ -202,7 +210,7 @@
     <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
     <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span><span class="sep">•</span>
     <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
-    <span class="item marca">⚡ <b>Federal Connect</b> · Inteligência artificial · online agora</span><span class="sep">•</span>
+    <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
