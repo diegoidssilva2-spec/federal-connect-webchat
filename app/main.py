@@ -16,7 +16,7 @@ import logging
 import re
 import time
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Header
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -69,8 +69,10 @@ async def pagina_painel():
 
 
 @app.get("/exportar-leads.csv")
-async def exportar_leads(senha: str = Query(...)):
-    if senha != OPERATOR_PASSWORD:
+async def exportar_leads(x_senha: str | None = Header(default=None)):
+    # Senha vem no header X-Senha, não na URL — query string fica gravada em
+    # texto puro nos logs de acesso do Render (achado no incidente de 27/09).
+    if x_senha != OPERATOR_PASSWORD:
         raise HTTPException(status_code=403, detail="Senha incorreta")
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -379,12 +381,22 @@ async def ws_chat(
 # ---------------------------------------------------------------------------
 
 @app.websocket("/ws/painel")
-async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
-    if senha != OPERATOR_PASSWORD:
-        await websocket.close(code=4001)
+async def ws_painel(websocket: WebSocket):
+    # A senha chega como 1ª mensagem ({"acao": "auth", "senha": ...}), não na
+    # URL — query string fica gravada em texto puro nos logs de acesso do
+    # Render (achado no incidente de 27/09).
+    await websocket.accept()
+    try:
+        auth = json.loads(await asyncio.wait_for(websocket.receive_text(), timeout=10))
+    except Exception:
+        auth = {}
+    if not isinstance(auth, dict) or auth.get("acao") != "auth" or auth.get("senha") != OPERATOR_PASSWORD:
+        try:
+            await websocket.close(code=4001)
+        except Exception:
+            pass
         return
 
-    await websocket.accept()
     OPERADORES_CONECTADOS.add(websocket)
     await _broadcast_painel()
 

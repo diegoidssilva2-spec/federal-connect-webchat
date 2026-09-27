@@ -138,6 +138,20 @@
   document.getElementById('btn-entrar').addEventListener('click', () => entrar(false));
   document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(false); });
 
+  // Export CSV manda a senha no header X-Senha (não na URL, que vai pros
+  // logs do Render) e baixa o arquivo via blob.
+  document.getElementById('link-exportar-csv').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const r = await fetch('/exportar-leads.csv', {headers: {'X-Senha': senhaAtual || ''}});
+    if(!r.ok){ alert('Não foi possível exportar os leads.'); return; }
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'leads_federal_connect.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
   // --- Abas Conversas / Relatórios ---
   document.getElementById('aba-conversas').addEventListener('click', () => trocarAba('conversas'));
   document.getElementById('aba-relatorios').addEventListener('click', () => trocarAba('relatorios'));
@@ -200,15 +214,23 @@
     if(!senha) return;
     senhaAtual = senha;
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${protocolo}://${location.host}/ws/painel?senha=${encodeURIComponent(senha)}`);
+    // Senha vai como 1ª mensagem, não na URL — URL fica gravada em texto
+    // puro nos logs de acesso do Render (achado no incidente de 27/09).
+    ws = new WebSocket(`${protocolo}://${location.host}/ws/painel`);
+    let autenticado = false;
 
     ws.onopen = () => {
+      ws.send(JSON.stringify({acao:'auth', senha}));
+    };
+    // Só entra no painel quando o servidor responde (senha aceita) — senha
+    // errada fecha a conexão com 4001 antes de qualquer mensagem chegar.
+    ws.addEventListener('message', () => {
+      if(autenticado) return;
+      autenticado = true;
       localStorage.setItem(CHAVE_SENHA, senha);
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
-      const linkCsv = document.getElementById('link-exportar-csv');
-      if(linkCsv) linkCsv.href = `/exportar-leads.csv?senha=${encodeURIComponent(senhaAtual)}`;
-    };
+    });
     ws.onclose = (ev) => {
       if(ev.code === 4001){
         localStorage.removeItem(CHAVE_SENHA);
