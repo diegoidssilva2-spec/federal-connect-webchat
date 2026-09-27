@@ -170,21 +170,25 @@
 
 <div id="faixa-planos">
   <div class="trilho">
+    <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
-    <span class="item">✅ Sem consulta SPC/Serasa</span><span class="sep">•</span>
+    <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span><span class="sep">•</span>
     <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
+    <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
-    <span class="item">✅ Sem consulta SPC/Serasa</span>
+    <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span>
   </div>
 </div>
 
@@ -351,10 +355,10 @@
   // 26/09: 219 de 223 visitantes abriam o chat e nunca digitavam nada. A
   // abertura agora fala direto com quem trabalha na rua e oferece botões de
   // um toque — mandar a primeira mensagem fica sem esforço nenhum.
-  // 27/09 (texto ditado pelo Diegão). Preço mantido em R$ 69,90 porque é o
-  // menor plano que a base do bot conhece — o "R$ 49,90 com 40GB" ditado
-  // aguarda confirmação do plano pra entrar aqui E no knowledge_base juntos.
-  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
+  // 27/09 (texto ditado pelo Diegão). Preço confirmado no site oficial
+  // (federalassociado.com.br): R$49,90 é o Vivo 40GB, o mais barato — bate
+  // com o mesmo valor usado em app/knowledge_base.py, atualizar os dois juntos.
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 49,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',
