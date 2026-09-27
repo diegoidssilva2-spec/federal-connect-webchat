@@ -341,14 +341,20 @@ async def ws_chat(
                 conversa.handoff_link_enviado = True
 
             if conversa.estagio == "concluido":
-                # 27/09 (pedido Diegão): lead finalizado sai da base viva e
-                # vai pra planilha externa, preservando o dado pra contato
-                # futuro sem deixar o CRM ativo/Postgres crescendo à toa.
+                # 27/09 (pedido Diegão): lead finalizado é arquivado numa
+                # planilha externa pra preservar o histórico. IMPORTANTE
+                # (28/09, correção de segurança): NÃO exclui mais da base
+                # viva (Postgres) automaticamente — o disco onde o CSV de
+                # arquivo é gravado é efêmero no deploy (Render/Cloud Run),
+                # some a cada restart/redeploy, então excluir daqui apagava
+                # o lead de vez sem garantia nenhuma de que o arquivo
+                # sobreviveu. Até a planilha externa ser um Google Sheets de
+                # verdade (via service account, item já no checklist), o
+                # lead só é compactado e marcado "concluido" — continua
+                # visível no painel, sem risco de sumir.
                 compactar_conversa_encerrada(conversa)
-                if arquivar_lead_concluido(conversa):
-                    await asyncio.to_thread(excluir_conversa, conversa.session_id)
-                else:
-                    await _persistir(conversa)
+                arquivar_lead_concluido(conversa)
+                await _persistir(conversa)
                 await _broadcast_painel()
                 continue
 
@@ -412,12 +418,12 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
                     if novo_estagio == "concluido":
                         # Mesmo arquivamento de quando a IA conclui sozinha
                         # (ver ws_chat) — aqui é quando o operador marca
-                        # "concluído" manualmente no painel.
+                        # "concluído" manualmente no painel. Mesma correção
+                        # de segurança de 28/09: não exclui mais da base
+                        # viva (ver comentário em ws_chat acima).
                         compactar_conversa_encerrada(conversa)
-                        if arquivar_lead_concluido(conversa):
-                            await asyncio.to_thread(excluir_conversa, session_id)
-                        else:
-                            await _persistir(conversa)
+                        arquivar_lead_concluido(conversa)
+                        await _persistir(conversa)
                         await _broadcast_painel()
                     else:
                         await _persistir(conversa)
