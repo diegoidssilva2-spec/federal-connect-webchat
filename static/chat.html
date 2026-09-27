@@ -94,7 +94,7 @@
     /* Logo do chip gerado no Magnific (27/09) substitui o "FC" — o texto
        continua no HTML como fallback (aparece 1 frame antes da imagem
        carregar, ou se o arquivo falhar por algum motivo). */
-    background-image: url('/static/img/avatar-chip.jpg');
+    background-image: url('/static/img/avatar-chip.webp');
     background-size:cover; background-position:center;
     color:transparent; font-size:0; /* esconde o "FC" quando a imagem carrega */
     flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
@@ -152,14 +152,20 @@
      MESMA cor verde/neon — ficava verde em cima de verde, sumia. Correção:
      fundo volta a ser neutro (contorno, igual era antes), só o ícone (a
      imagem) é novo; ele aparece por conta própria. */
+  /* Borda neon fixa (27/09, pedido Diegão) — antes só acendia no :hover,
+     agora fica sempre ligada (o :hover só intensifica um pouco o brilho). */
   #btn-anexar{
-    background:rgba(36,26,68,0.6); border:1px solid rgba(155,89,232,0.3);
+    background:rgba(36,26,68,0.6); border:1px solid var(--verde);
+    box-shadow:0 0 6px rgba(61,217,160,0.7), 0 0 14px rgba(61,217,160,0.4), inset 0 0 6px rgba(61,217,160,0.15);
     width:46px; height:46px; border-radius:10px; padding:0; flex-shrink:0;
     background-image:url('/static/img/icone-anexar.png');
     background-repeat:no-repeat; background-position:center; background-size:60%;
     color:transparent; font-size:0; /* esconde o 📎 quando a imagem carrega */
   }
-  #btn-anexar:hover{ border-color:var(--verde); }
+  #btn-anexar:hover{
+    border-color:var(--verde-forte);
+    box-shadow:0 0 10px rgba(94,235,184,0.9), 0 0 22px rgba(61,217,160,0.6), inset 0 0 8px rgba(94,235,184,0.25);
+  }
   #btn-anexar:active{ transform:translateY(1px); }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
