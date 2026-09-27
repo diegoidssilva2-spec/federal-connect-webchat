@@ -405,6 +405,12 @@ async def ws_painel(websocket: WebSocket):
             raw = await websocket.receive_text()
             data = json.loads(raw)
             acao = data.get("acao")
+            # Heartbeat do painel (27/09): no celular a conexão morre calada
+            # (tela bloqueada / troca de rede) e o painel ficava clicando no
+            # vazio. O painel manda ping a cada 20s e, sem pong, reconecta.
+            if acao == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
             session_id = data.get("session_id")
             conversa = obter(session_id)
             if conversa is None:

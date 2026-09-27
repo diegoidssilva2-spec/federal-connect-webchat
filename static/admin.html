@@ -50,6 +50,7 @@
   .item.precisa-humano.selecionado{ animation:none; }
   @keyframes piscar{ 0%,100%{ background:rgba(217,146,44,0.14); } 50%{ background:rgba(217,146,44,0.32); } }
   .item .nome{ font-size:14px; font-weight:600; }
+  .item .hora-item{ float:right; font-size:11px; font-weight:400; color:var(--texto-fraco); }
   .item .estagio{ font-size:11px; text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
   .estagio.novo{ color:var(--texto-fraco); }
   .estagio.conversando{ color:var(--verde); }
@@ -209,6 +210,22 @@
   // Diegão: "quando eu atualizo a página, ela sai do login").
   const CHAVE_SENHA = 'federal_painel_senha';
 
+  // Heartbeat (27/09): no celular a conexão morre calada (tela bloqueada,
+  // troca de rede) e o painel seguia mostrando a lista velha, com clique
+  // indo pro vazio. Ping a cada 20s; 50s sem nenhum sinal do servidor =
+  // conexão morta, reconecta. Voltar pro app também confere e reconecta.
+  let ultimoSinal = Date.now();
+  setInterval(() => {
+    if(!ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(ws.readyState !== 1 || Date.now() - ultimoSinal > 50000){ entrar(true); return; }
+    ws.send(JSON.stringify({acao:'ping'}));
+  }, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || !ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(ws.readyState !== 1 || Date.now() - ultimoSinal > 25000) entrar(true);
+    else ws.send(JSON.stringify({acao:'ping'}));
+  });
+
   function entrar(silencioso){
     const senha = silencioso ? localStorage.getItem(CHAVE_SENHA) : document.getElementById('input-senha').value;
     if(!senha) return;
@@ -216,26 +233,39 @@
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
     // Senha vai como 1ª mensagem, não na URL — URL fica gravada em texto
     // puro nos logs de acesso do Render (achado no incidente de 27/09).
+    if(ws && ws.readyState <= 1){ try{ ws.close(); }catch(e){} }
     ws = new WebSocket(`${protocolo}://${location.host}/ws/painel`);
+    const esteWs = ws;
     let autenticado = false;
 
     ws.onopen = () => {
       ws.send(JSON.stringify({acao:'auth', senha}));
     };
     // Só entra no painel quando o servidor responde (senha aceita) — senha
-    // errada fecha a conexão com 4001 antes de qualquer mensagem chegar.
+    // errada fecha a conexão antes de qualquer mensagem chegar.
     ws.addEventListener('message', () => {
+      ultimoSinal = Date.now();
       if(autenticado) return;
       autenticado = true;
       localStorage.setItem(CHAVE_SENHA, senha);
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
+      // Reconectou com uma conversa aberta: recarrega o histórico dela.
+      if(selecionada) esteWs.send(JSON.stringify({acao:'abrir', session_id: selecionada}));
     });
     ws.onclose = (ev) => {
-      if(ev.code === 4001){
-        localStorage.removeItem(CHAVE_SENHA);
-        if(!silencioso) alert('Senha incorreta.');
+      if(esteWs !== ws) return; // conexão antiga, já substituída
+      // Conexão que já estava logada caiu (celular bloqueou, trocou de
+      // rede, deploy): reconecta sozinho em vez de largar o painel parado
+      // com a lista velha na tela e clique indo pro vazio (27/09).
+      if(autenticado && localStorage.getItem(CHAVE_SENHA)){
+        setTimeout(() => { if(esteWs === ws) entrar(true); }, 1500);
+        return;
       }
+      // Caiu antes de logar = senha errada (o 4001 às vezes chega sem
+      // código pelo proxy do Render) — não fica em loop tentando.
+      localStorage.removeItem(CHAVE_SENHA);
+      if(!silencioso) alert(ev.code === 4001 ? 'Senha incorreta.' : 'Não foi possível entrar. Confira a senha e tente de novo.');
       document.getElementById('login').style.display = 'flex';
       document.getElementById('app').classList.remove('ativo');
     };
@@ -294,7 +324,7 @@
       div.className = 'item' + (c.session_id === selecionada ? ' selecionado' : '') + (urgente ? ' precisa-humano' : '');
       const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
       const rotuloEstagio = urgente ? '🚨 Precisa de atendimento humano' : c.estagio.replace(/_/g,' ');
-      div.innerHTML = `<div class="nome">${nome}</div><div class="estagio ${c.estagio}">${rotuloEstagio}</div>`;
+      div.innerHTML = `<div class="nome">${nome}<span class="hora-item">${horaCurta(c.ultima_mensagem_em)}</span></div><div class="estagio ${c.estagio}">${rotuloEstagio}</div>`;
       div.addEventListener('click', () => selecionar(c.session_id));
       el.appendChild(div);
     });
@@ -381,7 +411,9 @@
     if(opcoes && opcoes.comHistorico){
       // Carrega o histórico da conversa (sem isso, abrir uma conversa em
       // andamento aparecia vazia, dando impressão de painel quebrado).
-      ws.send(JSON.stringify({acao:'abrir', session_id: sessionId}));
+      // Conexão fechada: reconecta, e a reconexão já pede o histórico.
+      if(ws && ws.readyState === 1) ws.send(JSON.stringify({acao:'abrir', session_id: sessionId}));
+      else entrar(true);
     }
   }
 
@@ -391,8 +423,19 @@
     return `${nome}${telefone} — <span class="estagio ${c.estagio}">${c.estagio.replace(/_/g,' ')}</span>`;
   }
 
+  // Horário (27/09, pedido Diegão): hoje mostra só HH:MM, outro dia mostra
+  // DD/MM HH:MM. Timestamps vêm em segundos (time.time() do servidor).
+  function horaCurta(ts){
+    if(!ts) return '';
+    const d = new Date(ts * 1000);
+    const hhmm = d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    if(d.toDateString() === new Date().toDateString()) return hhmm;
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + hhmm;
+  }
+
   function notasELinha(c){
     const partes = [];
+    partes.push(`🕒 início ${horaCurta(c.criada_em)} · última ${horaCurta(c.ultima_mensagem_em)}`);
     if(c.lead_origem) partes.push('📍 ' + c.lead_origem);
     if(c.lead_notes) partes.push('📝 ' + c.lead_notes);
     return partes.join(' &nbsp;·&nbsp; ');
