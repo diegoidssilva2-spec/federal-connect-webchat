@@ -289,6 +289,13 @@ async def ws_chat(
         while True:
             raw = await websocket.receive_text()
             data = json.loads(raw)
+            # Heartbeat do chat (27/09): mesmo esquema do painel — a conexão
+            # do visitante morria calada (celular em segundo plano, rede) e
+            # a mensagem digitada não saía. O chat manda ping e reconecta
+            # sozinho se não receber pong.
+            if data.get("tipo") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
             texto_lead = data.get("texto", "").strip()
             imagem_base64 = data.get("imagem_base64")
             imagem_media_type = data.get("imagem_media_type")
@@ -333,7 +340,16 @@ async def ws_chat(
             conversa.history = resultado["updated_history"]
             resposta = resultado["reply"]
 
-            await websocket.send_json({"type": "mensagem", "remetente": "ia", "texto": resposta})
+            # Manda pra conexão ATUAL do visitante (se ele reconectou enquanto
+            # a IA pensava, a antiga já morreu) e não deixa uma falha de envio
+            # impedir a gravação no banco logo abaixo — a resposta fica no
+            # histórico e aparece quando ele reconectar.
+            try:
+                await (conversa.websocket_visitante or websocket).send_json(
+                    {"type": "mensagem", "remetente": "ia", "texto": resposta}
+                )
+            except Exception:
+                logger.warning("Falha ao entregar resposta da IA ao visitante %s (desconectado)", conversa.session_id)
             await _enviar_mensagem_para_operadores_da_conversa(conversa, "ia", resposta)
 
             # CRM leve: mesmo refresh de nome/telefone/origem/notas via IA
@@ -370,7 +386,11 @@ async def ws_chat(
             await _broadcast_painel()
 
     except WebSocketDisconnect:
-        conversa.websocket_visitante = None
+        # Só limpa se ainda for esta conexão — se o visitante já reconectou,
+        # a queda tardia da conexão antiga não pode apagar a nova (senão a
+        # mensagem do operador deixava de chegar nele).
+        if conversa.websocket_visitante is websocket:
+            conversa.websocket_visitante = None
         await _broadcast_painel()
 
 

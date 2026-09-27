@@ -111,7 +111,7 @@
   <div class="avatar">FC</div>
   <div>
     <div class="titulo">Federal Conect</div>
-    <div class="sub">Consultor digital · online agora</div>
+    <div class="sub">Inteligência artificial · online agora</div>
   </div>
 </header>
 
@@ -159,7 +159,7 @@
   function addMsg(remetente, texto, imagemDataUrl){
     const div = document.createElement('div');
     div.className = 'msg ' + remetente;
-    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'Consultor' : 'Atendente'}</div>`;
+    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'IA Federal' : 'Atendente'}</div>`;
     const imgHtml = imagemDataUrl ? `<img src="${imagemDataUrl}" />` : '';
     const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     div.innerHTML = tag + formatarMensagem(texto) + imgHtml + `<div class="hora">${hora}</div>`;
@@ -223,17 +223,65 @@
   // e isso vai pro painel/CSV, pra saber qual conjunto/imagem trouxe o lead.
   const origemAnuncio = [params.get('utm_source'), params.get('utm_campaign'), params.get('utm_content')]
     .filter(Boolean).join('/');
-  const qs = new URLSearchParams();
-  if(sessionId) qs.set('session_id', sessionId);
-  if(origemAnuncio) qs.set('origem', origemAnuncio);
-
   const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${protocolo}://${location.host}/ws/chat${qs.toString() ? '?' + qs.toString() : ''}`);
+  const subtituloEl = document.querySelector('header .sub');
+  const SUBTITULO_ONLINE = subtituloEl.textContent;
+
+  // Reconexão automática (27/09): antes existia UMA conexão só, criada no
+  // carregamento. Se ela caísse (celular em segundo plano, troca de rede,
+  // proxy do Render), o botão Enviar simplesmente não fazia nada e o lead
+  // achava que o chat travou. Agora: reconecta sozinho, ping a cada 20s pra
+  // detectar conexão morta, e a mensagem digitada durante a queda é enviada
+  // assim que a conexão volta.
+  let ws = null;
+  let ultimoSinal = Date.now();
+  let tentativas = 0;
+  let pendente = null; // texto digitado enquanto a conexão estava caída
+
+  function conectar(){
+    if(ws && ws.readyState <= 1){ try{ ws.close(); }catch(e){} }
+    const qs = new URLSearchParams();
+    if(sessionId) qs.set('session_id', sessionId);
+    if(origemAnuncio) qs.set('origem', origemAnuncio);
+    const este = new WebSocket(`${protocolo}://${location.host}/ws/chat${qs.toString() ? '?' + qs.toString() : ''}`);
+    ws = este;
+    este.onopen = () => {
+      tentativas = 0;
+      ultimoSinal = Date.now();
+      subtituloEl.textContent = SUBTITULO_ONLINE;
+    };
+    este.onmessage = (event) => {
+      if(este !== ws) return; // conexão antiga, já substituída
+      ultimoSinal = Date.now();
+      tratarMensagem(JSON.parse(event.data));
+    };
+    este.onclose = () => {
+      if(este !== ws) return;
+      subtituloEl.textContent = 'reconectando…';
+      const espera = Math.min(1000 * 2 ** tentativas, 10000);
+      tentativas++;
+      setTimeout(() => { if(este === ws) conectar(); }, espera);
+    };
+  }
+
+  setInterval(() => {
+    if(!ws || ws.readyState !== WebSocket.OPEN) return;
+    if(Date.now() - ultimoSinal > 50000){ conectar(); return; }
+    ws.send(JSON.stringify({tipo:'ping'}));
+  }, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || !ws) return;
+    if(ws.readyState !== WebSocket.OPEN || Date.now() - ultimoSinal > 25000) conectar();
+    else ws.send(JSON.stringify({tipo:'ping'}));
+  });
 
   // 26/09: 219 de 223 visitantes abriam o chat e nunca digitavam nada. A
   // abertura agora fala direto com quem trabalha na rua e oferece botões de
   // um toque — mandar a primeira mensagem fica sem esforço nenhum.
-  const MENSAGEM_BOAS_VINDAS = 'Oi! 👋 Aqui é o consultor da Federal Conect.\nInternet que não acaba no meio da corrida, a partir de R$ 69,90 — Vivo, Claro ou TIM, sem consulta ao SPC/Serasa.\nToca numa opção aí embaixo pra gente começar:';
+  // 27/09 (texto ditado pelo Diegão). Preço mantido em R$ 69,90 porque é o
+  // menor plano que a base do bot conhece — o "R$ 49,90 com 40GB" ditado
+  // aguarda confirmação do plano pra entrar aqui E no knowledge_base juntos.
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',
@@ -260,21 +308,30 @@
     if(el) el.remove();
   }
 
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+  function tratarMensagem(data){
     if(data.type === 'sessao'){
       sessionId = data.session_id;
       localStorage.setItem('federal_session_id', sessionId);
     } else if(data.type === 'historico'){
-      // Reconectou (recarregou a página / saiu e voltou) — o servidor manda
-      // de volta o que já tinha sido conversado, pra não perder tudo.
+      // Reconectou (recarregou a página / saiu e voltou / conexão caiu) — o
+      // servidor manda de volta o que já tinha sido conversado. A tela é
+      // redesenhada do zero pra não duplicar mensagens a cada reconexão.
       // Se vier vazio, é sessão nova mesmo: mostra a mensagem de boas-vindas.
+      esconderDigitando();
+      travarEnvio(false);
       if(data.mensagens && data.mensagens.length){
         jaEnviouMensagem = true;
+        mensagensEl.innerHTML = '';
+        addMsg('ia', MENSAGEM_BOAS_VINDAS); // abertura fica sempre no topo
         data.mensagens.forEach(m => addMsg(m.remetente, m.texto));
       } else if(mensagensEl.children.length === 0){
         addMsg('ia', MENSAGEM_BOAS_VINDAS);
         mostrarRespostasRapidas();
+      }
+      if(pendente !== null){
+        const texto = pendente;
+        pendente = null;
+        enviarTexto(texto);
       }
     } else if(data.type === 'evento'){
       // Servidor avisa quando a IA capturou o WhatsApp do lead.
@@ -284,7 +341,9 @@
       travarEnvio(false);
       addMsg(data.remetente, data.texto);
     }
-  };
+  }
+
+  conectar();
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -293,7 +352,14 @@
 
   function enviarTexto(texto){
     if(!texto && !imagemPendente) return;
-    if(ws.readyState !== WebSocket.OPEN) return;
+    // Conexão caída: guarda a mensagem (o texto continua no campo) e
+    // reconecta — ela sai sozinha assim que a conexão voltar.
+    if(!ws || ws.readyState !== WebSocket.OPEN){
+      pendente = texto;
+      subtituloEl.textContent = 'reconectando…';
+      if(!ws || ws.readyState !== WebSocket.CONNECTING) conectar();
+      return;
+    }
 
     removerRespostasRapidas();
     if(!jaEnviouMensagem){

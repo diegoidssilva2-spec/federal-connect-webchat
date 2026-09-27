@@ -545,12 +545,22 @@
     return comLinks.replace(/\n/g, '<br>');
   }
 
+  // Rótulo de quem falou (27/09, pedido Diegão): "IA Federal" em vez de
+  // "ia", e o nome do lead (quando a IA já capturou) em vez de "lead".
+  function rotuloRemetente(remetente){
+    if(remetente === 'ia') return 'IA Federal';
+    if(remetente === 'operador') return 'Operador';
+    const c = conversas.find(x => x.session_id === selecionada);
+    const nome = (c && c.lead_name) || 'Lead';
+    return nome.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function renderMensagemNova(remetente, texto){
     const msgs = document.getElementById('msgs');
     if(!msgs) return;
     const div = document.createElement('div');
     div.className = 'msg ' + remetente;
-    div.innerHTML = `<div class="tag">${remetente}</div>${formatarMensagem(texto)}`;
+    div.innerHTML = `<div class="tag">${rotuloRemetente(remetente)}</div>${formatarMensagem(texto)}`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
