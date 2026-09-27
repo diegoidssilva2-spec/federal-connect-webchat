@@ -138,11 +138,6 @@
   document.getElementById('btn-entrar').addEventListener('click', () => entrar(false));
   document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(false); });
 
-  // Ao carregar a página (inclusive num F5), tenta reconectar sozinho com a
-  // senha já salva antes de mostrar a tela de login — só cai no login de
-  // verdade se não tiver senha salva ou se ela não for mais válida.
-  entrar(true);
-
   // --- Abas Conversas / Relatórios ---
   document.getElementById('aba-conversas').addEventListener('click', () => trocarAba('conversas'));
   document.getElementById('aba-relatorios').addEventListener('click', () => trocarAba('relatorios'));
@@ -494,6 +489,15 @@
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
+
+  // Ao carregar a página (inclusive num F5), tenta reconectar sozinho com a
+  // senha já salva antes de mostrar a tela de login — só cai no login de
+  // verdade se não tiver senha salva ou se ela não for mais válida.
+  // Fica no FIM do script de propósito: chamado lá em cima (antes de
+  // `const CHAVE_SENHA` / `let piscaTitulo` existirem) dava ReferenceError
+  // e matava o resto do script — o painel não listava conversa nenhuma
+  // (causa do "sumiram as conversas do painel", 27/09).
+  entrar(true);
 </script>
 
 </body>
