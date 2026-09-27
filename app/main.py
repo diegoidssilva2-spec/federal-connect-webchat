@@ -267,6 +267,12 @@ async def ws_chat(
         # trouxe cada lead, pra comparar de verdade o que converte.
         if origem:
             conversa.lead_origem = "anúncio:" + re.sub(r"[^\w\-/. ]", "", origem)[:80]
+        # 27/09 (incidente "leads sumiram do painel"): antes a sessão só ia
+        # pro banco quando o visitante mandava a 1ª mensagem — quem abria o
+        # chat e não digitava aparecia no painel e sumia a cada redeploy, e
+        # quem recarregava a página depois de um restart caía de novo na
+        # boas-vindas. Agora grava já na abertura (upsert, não apaga nada).
+        await _persistir(conversa)
 
     conversa.websocket_visitante = websocket
     await websocket.send_json({"type": "sessao", "session_id": conversa.session_id})
