@@ -37,10 +37,63 @@
     background: radial-gradient(1200px 800px at 15% -10%, #8C5FE0 0%, #2B2050 60%);
   }
   header{
+    position:relative; overflow:hidden;
     padding:16px 20px; background:rgba(55,42,102,0.85); backdrop-filter: blur(6px);
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
   }
+  /* Fibra óptica "correndo" no cabeçalho (27/09, pedido Diegão) — feito em
+     CSS puro (zero custo de crédito de IA, mais leve que imagem/vídeo):
+     linhas diagonais em degradê que deslizam em loop, estilo "luz passando
+     por fibra". Duas camadas com velocidades diferentes pra dar profundidade. */
+  header::before, header::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background-repeat:repeat; opacity:.5;
+    background-image: repeating-linear-gradient(
+      100deg,
+      transparent 0 40px,
+      rgba(61,217,160,0.55) 40px 42px,
+      transparent 42px 90px,
+      rgba(94,235,184,0.35) 90px 92px,
+      transparent 92px 160px
+    );
+    background-size:220px 100%;
+    animation: fibra-correndo 5s linear infinite;
+  }
+  header::after{
+    opacity:.25; animation-duration:8s; animation-direction:reverse;
+    background-image: repeating-linear-gradient(
+      100deg,
+      transparent 0 60px,
+      rgba(140,95,224,0.6) 60px 63px,
+      transparent 63px 150px
+    );
+    background-size:300px 100%;
+  }
+  @keyframes fibra-correndo{ from{ background-position:0 0; } to{ background-position:-220px 0; } }
+  header > *{ position:relative; z-index:1; } /* conteúdo do cabeçalho acima das linhas */
+
+  /* Faixa de planos passando (27/09, pedido Diegão) — marquee em CSS puro,
+     sem crédito de IA. Preços vêm do mesmo texto que a IA usa
+     (app/knowledge_base.py) — atualizar os dois juntos se o preço mudar. */
+  #faixa-planos{
+    position:relative; z-index:1; overflow:hidden; flex-shrink:0;
+    background:#241A44; border-bottom:1px solid rgba(155,89,232,0.25);
+    padding:7px 0; white-space:nowrap;
+  }
+  #faixa-planos .trilho{
+    display:inline-flex; gap:28px; animation: passar 22s linear infinite;
+    padding-left:100%;
+  }
+  #faixa-planos:hover .trilho, #faixa-planos:active .trilho{ animation-play-state:paused; }
+  #faixa-planos .item{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--texto); }
+  #faixa-planos .item b{ color:var(--verde-forte); }
+  #faixa-planos .sep{ color:var(--texto-fraco); opacity:.5; }
+  @keyframes passar{ from{ transform:translateX(0); } to{ transform:translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce){
+    header::before, header::after, #faixa-planos .trilho{ animation:none; }
+  }
+
   header .avatar{
     width:38px; height:38px; border-radius:50%;
     background: radial-gradient(circle at 30% 30%, var(--verde-forte), var(--verde) 55%, #3DD9A0);
@@ -114,6 +167,26 @@
     <div class="sub">Inteligência artificial · online agora</div>
   </div>
 </header>
+
+<div id="faixa-planos">
+  <div class="trilho">
+    <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
+    <span class="item">✅ Sem consulta SPC/Serasa</span><span class="sep">•</span>
+    <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
+    <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 200GB — R$159,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 300GB — R$199,90/mês</span><span class="sep">•</span>
+    <span class="item">✅ Sem consulta SPC/Serasa</span>
+  </div>
+</div>
 
 <div id="mensagens"></div>
 
