@@ -48,6 +48,15 @@ CONSULTOR_HUMANO_WHATSAPP_NUMERO = os.environ.get(
 # var se o volume de disco do deploy for outro.
 LEADS_CSV_PATH = os.environ.get("LEADS_CSV_PATH", "leads_federal_connect.csv")
 
+# Arquivo/planilha externa de leads FINALIZADOS (27/09, pedido Diegão via
+# Sandro): quando um lead é marcado "concluido", os dados dele são gravados
+# aqui e removidos da base viva (CONVERSAS/Postgres) — preserva o histórico
+# pra contato futuro sem deixar a base ativa crescendo pra sempre com quem
+# já converteu. Formato CSV por enquanto (upgrade natural: Google Sheets via
+# service account, mesma credencial pendente do checklist do MCP de
+# planilha — até lá isso já resolve o pedido sem depender dela).
+ARQUIVO_LEADS_CSV_PATH = os.environ.get("ARQUIVO_LEADS_CSV_PATH", "leads_arquivados_federal_connect.csv")
+
 # Webhook opcional — se configurado, toda vez que um lead for atualizado o
 # servidor manda um POST com os dados dele (JSON) pra essa URL. É o gancho
 # pronto pra plugar automação externa (Zapier/Make/planilha do Google via

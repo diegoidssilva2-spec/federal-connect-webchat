@@ -26,7 +26,7 @@ from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
     registrar_atualizacao_lead, inicializar_banco_e_carregar, salvar_no_banco,
-    excluir_conversa,
+    excluir_conversa, arquivar_lead_concluido,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -217,7 +217,18 @@ async def _broadcast_painel():
         OPERADORES_CONECTADOS.discard(ws)
 
 
-async def _enviar_mensagem_para_operadores_da_conversa(conversa: Conversa, remetente: str, texto: str):
+async def _enviar_mensagem_para_operadores_da_conversa(
+    conversa: Conversa, remetente: str, texto: str, excluir_ws: WebSocket | None = None
+):
+    """
+    `excluir_ws`: o próprio painel de quem mandou a mensagem já renderiza ela
+    localmente na hora do clique (otimista, sem esperar o servidor) — sem
+    excluir esse websocket do broadcast, o remetente recebia a mensagem de
+    volta e ela aparecia duplicada na tela dele (bug reportado: "quando eu
+    assumi uma conversa com o Sandro, estava mandando mensagem em
+    duplicidade"). Os outros operadores conectados continuam recebendo
+    normalmente.
+    """
     payload = {
         "type": "mensagem",
         "session_id": conversa.session_id,
@@ -226,6 +237,8 @@ async def _enviar_mensagem_para_operadores_da_conversa(conversa: Conversa, remet
     }
     mortos = []
     for ws in OPERADORES_CONECTADOS:
+        if ws is excluir_ws:
+            continue
         try:
             await ws.send_json(payload)
         except Exception:
@@ -324,10 +337,20 @@ async def ws_chat(
             # Classificação automática — a IA decide o estágio sozinha,
             # ninguém no painel precisa clicar pra mudar isso manualmente.
             conversa.estagio = resultado["estagio_sugerido"]
-            if conversa.estagio == "concluido":
-                compactar_conversa_encerrada(conversa)
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
+
+            if conversa.estagio == "concluido":
+                # 27/09 (pedido Diegão): lead finalizado sai da base viva e
+                # vai pra planilha externa, preservando o dado pra contato
+                # futuro sem deixar o CRM ativo/Postgres crescendo à toa.
+                compactar_conversa_encerrada(conversa)
+                if arquivar_lead_concluido(conversa):
+                    await asyncio.to_thread(excluir_conversa, conversa.session_id)
+                else:
+                    await _persistir(conversa)
+                await _broadcast_painel()
+                continue
 
             await _persistir(conversa)
             await _broadcast_painel()
@@ -387,9 +410,18 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
                 if novo_estagio:
                     conversa.estagio = novo_estagio
                     if novo_estagio == "concluido":
+                        # Mesmo arquivamento de quando a IA conclui sozinha
+                        # (ver ws_chat) — aqui é quando o operador marca
+                        # "concluído" manualmente no painel.
                         compactar_conversa_encerrada(conversa)
-                    await _persistir(conversa)
-                    await _broadcast_painel()
+                        if arquivar_lead_concluido(conversa):
+                            await asyncio.to_thread(excluir_conversa, session_id)
+                        else:
+                            await _persistir(conversa)
+                        await _broadcast_painel()
+                    else:
+                        await _persistir(conversa)
+                        await _broadcast_painel()
 
             elif acao == "mensagem":
                 texto = data.get("texto", "").strip()
@@ -404,7 +436,7 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
                         )
                     except Exception:
                         logger.warning("Falha ao entregar mensagem do operador ao visitante (desconectado)")
-                await _enviar_mensagem_para_operadores_da_conversa(conversa, "operador", texto)
+                await _enviar_mensagem_para_operadores_da_conversa(conversa, "operador", texto, excluir_ws=websocket)
                 await _persistir(conversa)
                 await _broadcast_painel()
 

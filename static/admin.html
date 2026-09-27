@@ -135,8 +135,13 @@
   // reconstruía o formulário do zero).
   const rascunhos = {};
 
-  document.getElementById('btn-entrar').addEventListener('click', entrar);
-  document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(); });
+  document.getElementById('btn-entrar').addEventListener('click', () => entrar(false));
+  document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(false); });
+
+  // Ao carregar a página (inclusive num F5), tenta reconectar sozinho com a
+  // senha já salva antes de mostrar a tela de login — só cai no login de
+  // verdade se não tiver senha salva ou se ela não for mais válida.
+  entrar(true);
 
   // --- Abas Conversas / Relatórios ---
   document.getElementById('aba-conversas').addEventListener('click', () => trocarAba('conversas'));
@@ -189,20 +194,31 @@
     `;
   }
 
-  function entrar(){
-    const senha = document.getElementById('input-senha').value;
+  // Guarda a senha no localStorage pra sobreviver a um F5 na página — antes
+  // disso, todo refresh derrubava o WebSocket e, sem senha guardada em
+  // lugar nenhum, o painel sempre voltava pra tela de login (queixa do
+  // Diegão: "quando eu atualizo a página, ela sai do login").
+  const CHAVE_SENHA = 'federal_painel_senha';
+
+  function entrar(silencioso){
+    const senha = silencioso ? localStorage.getItem(CHAVE_SENHA) : document.getElementById('input-senha').value;
+    if(!senha) return;
     senhaAtual = senha;
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${protocolo}://${location.host}/ws/painel?senha=${encodeURIComponent(senha)}`);
 
     ws.onopen = () => {
+      localStorage.setItem(CHAVE_SENHA, senha);
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
       const linkCsv = document.getElementById('link-exportar-csv');
       if(linkCsv) linkCsv.href = `/exportar-leads.csv?senha=${encodeURIComponent(senhaAtual)}`;
     };
     ws.onclose = (ev) => {
-      if(ev.code === 4001) alert('Senha incorreta.');
+      if(ev.code === 4001){
+        localStorage.removeItem(CHAVE_SENHA);
+        if(!silencioso) alert('Senha incorreta.');
+      }
       document.getElementById('login').style.display = 'flex';
       document.getElementById('app').classList.remove('ativo');
     };
@@ -457,10 +473,16 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    return escapado.replace(
+    // Mesmo fix do chat.html: *negrito* estilo WhatsApp vira <b>, e quebra
+    // de linha vira <br> — antes disso o painel mostrava tudo cru, um em
+    // cima do outro, com os asteriscos literais (era a mesma falha do
+    // chat.html, só que aqui nem \n virava <br>).
+    const comNegrito = escapado.replace(/\*([^\n*]+)\*/g, '<b>$1</b>');
+    const comLinks = comNegrito.replace(
       /(https?:\/\/[^\s<]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     );
+    return comLinks.replace(/\n/g, '<br>');
   }
 
   function renderMensagemNova(remetente, texto){

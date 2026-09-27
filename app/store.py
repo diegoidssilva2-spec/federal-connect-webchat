@@ -15,7 +15,7 @@ import urllib.request
 import uuid
 from dataclasses import dataclass, field
 
-from app.config import CRM_WEBHOOK_URL, LEADS_CSV_PATH
+from app.config import CRM_WEBHOOK_URL, LEADS_CSV_PATH, ARQUIVO_LEADS_CSV_PATH
 from app import db
 
 logger = logging.getLogger("federal-webchat")
@@ -233,4 +233,48 @@ def registrar_atualizacao_lead(conversa: Conversa) -> None:
     """Ponto único chamado pelo main.py sempre que o perfil do lead muda."""
     persistir_leads_csv()
     enviar_webhook_lead(conversa)
+
+
+# ---------------------------------------------------------------------------
+# Arquivamento de lead FINALIZADO (27/09) — quando o estágio vira "concluido",
+# o main.py chama isso ANTES de remover a conversa da base viva. Grava numa
+# planilha externa separada (append, nunca sobrescreve) pra preservar o
+# histórico de quem já converteu, mesmo depois de sair do CONVERSAS/Postgres.
+# ---------------------------------------------------------------------------
+
+_CAMPOS_CSV_ARQUIVO = [
+    "session_id", "nome", "telefone", "origem", "estagio_final", "notas",
+    "arquivado_em", "resumo_encerramento",
+]
+
+
+def arquivar_lead_concluido(conversa: Conversa) -> bool:
+    """
+    Nunca lança exceção pro chamador: se falhar ao gravar o arquivo, devolve
+    False e quem chamou (main.py) NÃO remove a conversa da base viva — mais
+    seguro perder a "faxina" da base do que perder o dado do lead de vez.
+    """
+    try:
+        arquivo_existe = os.path.exists(ARQUIVO_LEADS_CSV_PATH)
+        with open(ARQUIVO_LEADS_CSV_PATH, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not arquivo_existe:
+                writer.writerow(_CAMPOS_CSV_ARQUIVO)
+            writer.writerow([
+                conversa.session_id,
+                conversa.lead_name or "",
+                conversa.lead_phone or "",
+                conversa.lead_origem or "",
+                conversa.estagio,
+                conversa.lead_notes or "",
+                time.strftime("%d/%m/%Y %H:%M"),
+                conversa.resumo_encerramento or "",
+            ])
+        return True
+    except Exception:
+        logger.exception(
+            "Falha ao arquivar lead %s em %s — NÃO removendo da base viva por segurança.",
+            conversa.session_id, ARQUIVO_LEADS_CSV_PATH,
+        )
+        return False
 

@@ -144,7 +144,12 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    const comLinks = escapado.replace(
+    // A cartilha usa *negrito* estilo WhatsApp (um asterisco) pra destacar
+    // nome de plano, valores, CTAs etc — sem isso o texto chegava com os
+    // asteriscos literais na tela em vez de negrito (queixa do Sandro sobre
+    // a formatação das mensagens de plano).
+    const comNegrito = escapado.replace(/\*([^\n*]+)\*/g, '<b>$1</b>');
+    const comLinks = comNegrito.replace(
       /(https?:\/\/[^\s<]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     );

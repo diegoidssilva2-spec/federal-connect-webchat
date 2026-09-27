@@ -127,11 +127,19 @@ PERFIL_LEAD_TOOL = {
         "properties": {
             "nome": {
                 "type": ["string", "null"],
-                "description": "Primeiro nome do lead, se ele mencionou em algum momento (mesmo de forma indireta, ex: 'o Bruno é motorista'). null se ainda não souber.",
+                "description": (
+                    "Primeiro nome do PRÓPRIO lead (quem está sendo atendido, mensagens "
+                    "role='user'), se ele se identificou ou confirmou o nome dele mesmo "
+                    "em algum momento (mesmo de forma indireta, ex: 'o Bruno é motorista', "
+                    "dito pelo próprio Bruno sobre si). NUNCA preencha com o nome de outra "
+                    "pessoa citada na conversa (parente, colega, cliente, alguém que o lead "
+                    "ou o atendente mencionou de passagem) — isso não é o nome do lead. "
+                    "null se ainda não souber com certeza."
+                ),
             },
             "telefone": {
                 "type": ["string", "null"],
-                "description": "Número de celular/WhatsApp do lead com DDD, só dígitos. null se ainda não souber.",
+                "description": "Número de celular/WhatsApp do PRÓPRIO lead com DDD, só dígitos — nunca o telefone de um terceiro mencionado na conversa. null se ainda não souber.",
             },
             "origem": {
                 "type": ["string", "null"],
@@ -168,10 +176,20 @@ def extrair_perfil_lead_via_ia(history: list[dict]) -> dict:
             model=PRIMARY_MODEL,
             max_tokens=200,
             system=(
-                "Você extrai dados de identificação de um lead a partir de um "
-                "trecho de conversa de vendas em português. Não invente nada: "
-                "se não tiver certeza de um campo, responda null nele. Use "
-                "sempre a ferramenta salvar_perfil_lead pra responder."
+                "Você extrai dados de identificação do LEAD — a pessoa sendo atendida, "
+                "que fala nas mensagens com role 'user' — a partir de um trecho de "
+                "conversa de vendas em português. As mensagens com role 'assistant' "
+                "podem ser tanto a IA quanto um ATENDENTE HUMANO respondendo o lead "
+                "diretamente (o painel de operador permite um humano assumir a "
+                "conversa). CRÍTICO: se o lado 'assistant' mencionar o nome de outra "
+                "pessoa (um colega, um parente, um terceiro qualquer, inclusive numa "
+                "conversa entre o atendente e o lead sobre outra pessoa), esse nome "
+                "NUNCA é o nome do lead — não confunda um nome citado com o nome de "
+                "quem está sendo atendido. Só preencha 'nome'/'telefone' quando o "
+                "próprio lead (role 'user') se identificar ou confirmar esse dado "
+                "sobre si mesmo. Não invente nada: se não tiver certeza de um campo, "
+                "ou se houver ambiguidade sobre de quem é o dado, responda null nele. "
+                "Use sempre a ferramenta salvar_perfil_lead pra responder."
             ),
             messages=historico,
             tools=[PERFIL_LEAD_TOOL],
