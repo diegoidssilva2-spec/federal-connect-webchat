@@ -178,14 +178,45 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> bool:
     return bool(conversa.lead_phone) and not telefone_antes
 
 
-async def _avisar_lead_capturado(conversa: Conversa) -> None:
-    """Manda pro navegador do lead disparar o evento Lead do Pixel."""
+async def _avisar_evento_pixel(conversa: Conversa, nome: str) -> None:
+    """Manda pro navegador do lead disparar um evento do Pixel (Lead, InitiateCheckout, CompleteRegistration, ...)."""
     if conversa.websocket_visitante is None:
         return
     try:
-        await conversa.websocket_visitante.send_json({"type": "evento", "nome": "Lead"})
+        await conversa.websocket_visitante.send_json({"type": "evento", "nome": nome})
     except Exception:
         pass
+
+
+# Ordem do funil pra detectar TRANSIÇÃO de estágio (evento dispara só na
+# primeira vez que a conversa alcança aquele ponto, nunca de novo a cada
+# mensagem seguinte que ficar no mesmo estágio ou mais à frente).
+_ORDEM_ESTAGIO = [
+    "novo", "conversando", "aguardando_humano", "com_humano",
+    "aguardando_pagamento", "aguardando_ativacao", "concluido",
+]
+
+
+def _indice_estagio(estagio: str) -> int:
+    return _ORDEM_ESTAGIO.index(estagio) if estagio in _ORDEM_ESTAGIO else -1
+
+
+def _eventos_pixel_por_transicao(estagio_antes: str, estagio_depois: str) -> list[str]:
+    """
+    Mapeia transição de estágio pra eventos padrão do Pixel (28/09, pedido
+    Diegão — dar mais sinal pro Facebook otimizar por quem avança de
+    verdade no funil, não só por quem abre o chat):
+    - InitiateCheckout: primeira vez que chega em "aguardando_pagamento"
+      (a IA já mandou o lead pra plataforma de adesão/pagamento).
+    - CompleteRegistration: primeira vez que chega em "aguardando_ativacao"
+      OU "concluido" (contrato já assinado e validado — cadastro completo).
+    """
+    eventos = []
+    if _indice_estagio(estagio_depois) >= _indice_estagio("aguardando_pagamento") > _indice_estagio(estagio_antes):
+        eventos.append("InitiateCheckout")
+    if _indice_estagio(estagio_depois) >= _indice_estagio("aguardando_ativacao") > _indice_estagio(estagio_antes):
+        eventos.append("CompleteRegistration")
+    return eventos
 
 
 def _historico_para_payload(conversa: Conversa) -> list[dict]:
@@ -335,7 +366,7 @@ async def ws_chat(
                 # falar, tipo "o Bruno é motorista de app", e atualiza toda
                 # vez que a pessoa der mais informação, não só na primeira).
                 if await _atualizar_perfil_lead(conversa):
-                    await _avisar_lead_capturado(conversa)
+                    await _avisar_evento_pixel(conversa, "Lead")
                 await _persistir(conversa)
                 await _broadcast_painel()
                 continue
@@ -373,13 +404,21 @@ async def ws_chat(
             # que roda no ramo "humano_ativo" acima — mantém o painel em dia
             # a cada mensagem, seja quem for que está respondendo o lead.
             if await _atualizar_perfil_lead(conversa):
-                await _avisar_lead_capturado(conversa)
+                await _avisar_evento_pixel(conversa, "Lead")
 
             # Classificação automática — a IA decide o estágio sozinha,
             # ninguém no painel precisa clicar pra mudar isso manualmente.
+            estagio_antes = conversa.estagio
             conversa.estagio = resultado["estagio_sugerido"]
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
+
+            # Pixel (28/09, pedido Diegão): InitiateCheckout/CompleteRegistration
+            # disparam na primeira vez que a conversa alcança cada marco —
+            # dá ao Facebook sinal de quem avança de verdade no funil, não só
+            # quem abre o chat (isso já existia só pro evento Lead).
+            for evento in _eventos_pixel_por_transicao(estagio_antes, conversa.estagio):
+                await _avisar_evento_pixel(conversa, evento)
 
             if conversa.estagio == "concluido":
                 # 27/09 (pedido Diegão): lead finalizado é arquivado numa

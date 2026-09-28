@@ -445,7 +445,12 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = txt;
-      b.addEventListener('click', () => enviarTexto(txt));
+      b.addEventListener('click', () => {
+        // Pixel (28/09): clicar em "ver planos e preços" é o sinal mais
+        // direto de intenção de compra logo na abertura — ViewContent.
+        if(txt.includes('planos e preços')) fbq('track', 'ViewContent');
+        enviarTexto(txt);
+      });
       wrap.appendChild(b);
     });
     mensagensEl.appendChild(wrap);
@@ -482,8 +487,12 @@
         enviarTexto(texto);
       }
     } else if(data.type === 'evento'){
-      // Servidor avisa quando a IA capturou o WhatsApp do lead.
-      if(data.nome === 'Lead') fbq('track', 'Lead');
+      // Servidor avisa marcos do funil pro Pixel (28/09): Lead (capturou o
+      // WhatsApp), InitiateCheckout (mandou pro pagamento/adesão) e
+      // CompleteRegistration (contrato assinado e validado). Lista travada
+      // pra nunca disparar um nome de evento arbitrário vindo do servidor.
+      const EVENTOS_PIXEL_VALIDOS = ['Lead', 'InitiateCheckout', 'CompleteRegistration'];
+      if(EVENTOS_PIXEL_VALIDOS.includes(data.nome)) fbq('track', data.nome);
     } else if(data.type === 'mensagem'){
       esconderDigitando();
       travarEnvio(false);
