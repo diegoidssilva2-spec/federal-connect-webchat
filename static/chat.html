@@ -35,7 +35,10 @@
        arquivo; essa aqui foi gerada certa (1536x768) e o degradê por cima
        garante contraste pro texto das mensagens em qualquer trecho da
        imagem. background-size:cover cobre a tela toda em qualquer
-       proporção de celular sem repetir/esticar feio. */
+       proporção de celular sem repetir/esticar feio.
+       EVOLUÇÃO FUTURA (pedido 28/09, ver CHECKLIST_GERAL): trocar essa foto
+       parada por vídeo/animação de fibra em loop — mesma ideia já vale pro
+       header logo abaixo. */
     background-image:
       linear-gradient(180deg, rgba(20,14,42,0.55) 0%, rgba(20,14,42,0.35) 40%, rgba(20,14,42,0.6) 100%),
       url('/static/img/fundo-chat.webp');
@@ -49,24 +52,13 @@
        que o título continue legível em qualquer parte da imagem. Pedido:
        depois vira vídeo/animação — por ora fica como foto parada. */
     background-image:
-      linear-gradient(90deg, rgba(30,20,60,0.5) 0%, rgba(30,20,60,0.2) 55%, rgba(30,20,60,0.45) 100%),
+      linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
       url('/static/img/banner-cabecalho.webp');
-    background-size:cover;
-    /* 28/09 (pedido Diegão): a arte original tem "FEDERAL CONNECT" no topo,
-       os 3 cards de preço no meio e "Sem consulta SPC/Serasa" embaixo — o
-       cabeçalho baixo cortava o título na metade ("só aparecia Connect").
-       Em vez de mostrar o título cortado, o enquadramento vai pro fundo da
-       imagem (position bottom): esconde o título quase todo e mostra os 3
-       cards de preço inteiros, que é o que interessa aqui. Degradê
-       escurecido bem mais fraco (era quase opaco) e filtro de
-       saturação/contraste deixam os logos/cores da arte mais vivos —
-       queixa de que as imagens estavam "sem brilho, sem destaque". */
-    background-position:center bottom;
-    filter:saturate(1.3) contrast(1.08) brightness(1.05);
-    /* 28/09 (pedido Diegão): cabeçalho mais alto pra mostrar mais da arte
-       de fundo — os preços R$69,90 de cada operadora ficam bem mais
-       visíveis com mais altura, em vez de cortados pelo padding pequeno. */
-    min-height:112px;
+    background-size:cover; background-position:center;
+    /* 28/09: voltou pra proporção original (padding pequeno, sem min-height,
+       sem filtro) a pedido do Diegão — no desktop, o cabeçalho mais alto e
+       o filtro de saturação tinham ficado estranhos. Fica assim até a
+       evolução planejada (ver ideia de animação abaixo). */
     padding:16px 20px; backdrop-filter: blur(2px);
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
