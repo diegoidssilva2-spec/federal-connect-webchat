@@ -201,6 +201,26 @@
     #btn-anexar{ width:40px; height:40px; font-size:16px; }
     button[type="submit"]{ padding:0 14px; }
   }
+
+  /* 28/09 (pedido Diegão/Sandro): no desktop o chat nunca teve um breakpoint
+     próprio — só esticava pra ocupar a janela inteira, sem limite de
+     largura. Cabeçalho ficava larguíssimo e baixo (cortando o banner de um
+     jeito que nunca acontece no celular) e a área de mensagem ficava enorme
+     com a abertura pequena lá no topo. Não era "quebra de responsivo": nunca
+     existiu proporção de desktop, só a de celular esticada. Correção: a
+     partir de 560px de largura, o chat vira um widget centralizado com a
+     MESMA largura de referência do celular — cabeçalho/mensagens/rodapé
+     ficam com a proporção idêntica nos dois, só muda o espaço vazio dos
+     lados (fundo escuro liso). Celular (abaixo de 560px) não é afetado. */
+  @media (min-width: 560px){
+    html{ background:#15102B; }
+    body{
+      max-width:460px; margin:0 auto;
+      box-shadow:0 0 60px rgba(0,0,0,0.55);
+      border-left:1px solid rgba(155,89,232,0.2);
+      border-right:1px solid rgba(155,89,232,0.2);
+    }
+  }
 </style>
 </head>
 <body>
