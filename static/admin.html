@@ -286,9 +286,19 @@
   // aproximação de lead qualificado (chegou perto o suficiente da compra).
   const ESTAGIOS_QUALIFICADO = ['aguardando_pagamento', 'aguardando_ativacao', 'concluido'];
 
-  function diaCurtoISO(ts){
+  // 28/09 (bug encontrado pelo Diegão): "Novos leads hoje" (card de cima,
+  // já existia) usava toDateString() — dia LOCAL do navegador. Os gráficos
+  // novos usavam toISOString() — dia em UTC. Como o Brasil é UTC-3, todo
+  // lead criado depois das 21h (horário local) já caía no dia SEGUINTE em
+  // UTC, inflando o "hoje" do gráfico e não batendo com o card de cima
+  // ("54" vs "130"). Corrigido: as duas contagens usam a MESMA função de
+  // dia local agora — nunca mais podem divergir.
+  function diaCurtoLocal(ts){
     const d = new Date(ts * 1000);
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD, agrupa por dia
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
   }
   function diaRotulo(isoStr){
     const [ano, mes, dia] = isoStr.split('-');
@@ -314,19 +324,20 @@
       tempoMedioTexto = horas < 1 ? `${Math.round(mediaSegundos / 60)} min` : `${horas.toFixed(1)} h`;
     }
 
-    // Leads por dia — últimos 14 dias corridos (hoje incluso).
+    // Leads por dia — últimos 14 dias corridos (hoje incluso), sempre em
+    // dia LOCAL (ver comentário de diaCurtoLocal acima).
     const HOJE = new Date();
     const dias = [];
     for(let i = 13; i >= 0; i--){
       const d = new Date(HOJE);
       d.setDate(d.getDate() - i);
-      dias.push(d.toISOString().slice(0, 10));
+      dias.push(diaCurtoLocal(d.getTime() / 1000));
     }
     const porDia = {};
     dias.forEach(d => porDia[d] = 0);
     conversas.forEach(c => {
       if(!c.criada_em) return;
-      const dia = diaCurtoISO(c.criada_em);
+      const dia = diaCurtoLocal(c.criada_em);
       if(dia in porDia) porDia[dia]++;
     });
     const valoresPorDia = dias.map(d => porDia[d]);
