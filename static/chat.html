@@ -52,14 +52,16 @@
       linear-gradient(90deg, rgba(30,20,60,0.5) 0%, rgba(30,20,60,0.2) 55%, rgba(30,20,60,0.45) 100%),
       url('/static/img/banner-cabecalho.webp');
     background-size:cover;
-    /* 28/09 (pedido Diegão): "Federal Connect" escrito na própria arte
-       ficava cortado embaixo, só aparecia "Connect" pela metade — em vez de
-       tentar mostrar esse texto cortado, sobe o enquadramento (mostra mais
-       o topo da imagem) pra esse texto sair de quadro de vez. Degradê
+    /* 28/09 (pedido Diegão): a arte original tem "FEDERAL CONNECT" no topo,
+       os 3 cards de preço no meio e "Sem consulta SPC/Serasa" embaixo — o
+       cabeçalho baixo cortava o título na metade ("só aparecia Connect").
+       Em vez de mostrar o título cortado, o enquadramento vai pro fundo da
+       imagem (position bottom): esconde o título quase todo e mostra os 3
+       cards de preço inteiros, que é o que interessa aqui. Degradê
        escurecido bem mais fraco (era quase opaco) e filtro de
        saturação/contraste deixam os logos/cores da arte mais vivos —
        queixa de que as imagens estavam "sem brilho, sem destaque". */
-    background-position:center 15%;
+    background-position:center bottom;
     filter:saturate(1.3) contrast(1.08) brightness(1.05);
     /* 28/09 (pedido Diegão): cabeçalho mais alto pra mostrar mais da arte
        de fundo — os preços R$69,90 de cada operadora ficam bem mais
