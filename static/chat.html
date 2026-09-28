@@ -52,6 +52,10 @@
       linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
       url('/static/img/banner-cabecalho.webp');
     background-size:cover; background-position:center;
+    /* 28/09 (pedido Diegão): cabeçalho mais alto pra mostrar mais da arte
+       de fundo — os preços R$69,90 de cada operadora ficam bem mais
+       visíveis com mais altura, em vez de cortados pelo padding pequeno. */
+    min-height:112px;
     padding:16px 20px; backdrop-filter: blur(2px);
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
