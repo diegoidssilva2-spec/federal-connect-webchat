@@ -30,11 +30,16 @@
   body{
     margin:0; height:100vh; height:100dvh; color:var(--texto);
     font-family:'Helvetica Neue', Arial, sans-serif; display:flex; flex-direction:column;
-    /* Voltou pro degradê roxo original — a tentativa com imagem de fundo
-       ficou cinza/quebrada (arquivo grande demais / fora do formato certo).
-       Ver nota em chat_fundo_formato_recomendado no final do arquivo pra
-       quando o Diegão recriar a imagem no tamanho certo. */
-    background: radial-gradient(1200px 800px at 15% -10%, #8C5FE0 0%, #2B2050 60%);
+    /* Fundo com fibra óptica (28/09, arte do Diegão no Magnific) — a
+       tentativa anterior (27/09) tinha quebrado por causa do formato do
+       arquivo; essa aqui foi gerada certa (1536x768) e o degradê por cima
+       garante contraste pro texto das mensagens em qualquer trecho da
+       imagem. background-size:cover cobre a tela toda em qualquer
+       proporção de celular sem repetir/esticar feio. */
+    background-image:
+      linear-gradient(180deg, rgba(20,14,42,0.55) 0%, rgba(20,14,42,0.35) 40%, rgba(20,14,42,0.6) 100%),
+      url('/static/img/fundo-chat.webp');
+    background-size:cover; background-position:center; background-repeat:no-repeat;
   }
   header{
     position:relative; overflow:hidden;
@@ -45,7 +50,7 @@
        depois vira vídeo/animação — por ora fica como foto parada. */
     background-image:
       linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
-      url('/static/img/banner-cabecalho.jpg');
+      url('/static/img/banner-cabecalho.webp');
     background-size:cover; background-position:center;
     padding:16px 20px; backdrop-filter: blur(2px);
     border-bottom:1px solid rgba(155,89,232,0.25);
@@ -205,7 +210,6 @@
 <div id="faixa-planos">
   <div class="trilho">
     <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
-    <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
@@ -217,7 +221,6 @@
     <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span><span class="sep">•</span>
     <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
     <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
-    <span class="item">📶 <b>Vivo</b> 40GB — R$49,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Vivo</b> 150GB — R$99,90/mês</span><span class="sep">•</span>
     <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
@@ -397,10 +400,11 @@
   // 26/09: 219 de 223 visitantes abriam o chat e nunca digitavam nada. A
   // abertura agora fala direto com quem trabalha na rua e oferece botões de
   // um toque — mandar a primeira mensagem fica sem esforço nenhum.
-  // 27/09 (texto ditado pelo Diegão). Preço confirmado no site oficial
-  // (federalassociado.com.br): R$49,90 é o Vivo 40GB, o mais barato — bate
-  // com o mesmo valor usado em app/knowledge_base.py, atualizar os dois juntos.
-  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 49,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
+  // 27/09 (texto ditado pelo Diegão). 28/09: preço corrigido pro valor real
+  // de afiliado (R$69,90) — o site público mostrava R$49,90 (Vivo 40GB),
+  // mas esse plano não existe na tabela de afiliado da Federal. Mesmo valor
+  // usado em app/knowledge_base.py, atualizar os dois juntos se mudar.
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',

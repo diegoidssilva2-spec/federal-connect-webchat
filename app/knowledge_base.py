@@ -109,7 +109,6 @@ perguntar sobre isso. Resposta padrão: "Aqui não tem consulta de SPC/Serasa,
 
 ## PLANOS (internet ilimitada, sem franquia surpresa, sem fidelidade)
 ### VIVO
-- 40 GB — R$49,90/mês. Plano de entrada — ótimo pra quem usa mais rede social.
 - 80 GB — R$69,90/mês. O mais pedido pra quem usa internet todo dia.
 - 150 GB — R$99,90/mês. Pra quem quer navegar sem se preocupar com limite.
 - Diferencial exclusivo Vivo: é a única em que o cliente pode comprar o chip
@@ -125,16 +124,16 @@ perguntar sobre isso. Resposta padrão: "Aqui não tem consulta de SPC/Serasa,
 - 150 GB — R$99,90/mês.
 
 Todos os planos: sem fidelidade (pode trocar quando quiser) e sem consulta
-SPC/Serasa. Fonte oficial dos valores: federalassociado.com.br (27/09).
+SPC/Serasa. Fonte oficial dos valores: tabela de afiliado da Federal
+(confirmada pelo Diegão em 28/09 — NÃO existe plano de R$49,90, foi removido
+do treinamento; o valor de entrada real é R$69,90 nas 3 operadoras).
 Nunca inventar outros planos ou valores fora dessa lista.
 
 ## "A PARTIR DE" — QUAL VALOR USAR
 Quando for falar o preço de entrada da Federal de forma genérica (ex: na
 abertura da conversa, antes de saber qual operadora o lead quer), use
-**"a partir de R$49,90"** — é o Vivo 40GB, o mais barato de todos. Só ofereça
-esse plano especificamente se o lead topar pouca franquia (ele usa pouco,
-foco em rede social) — pra quem usa internet o dia todo, recomende o de
-80GB como padrão, e explique a diferença de preço.
+**"a partir de R$69,90"** — é o valor de entrada nas 3 operadoras (Vivo,
+Claro e TIM têm plano de 80GB/100GB por esse mesmo preço).
 
 ## POR QUE A FEDERAL É MELHOR: DIFERENCIAL DE QUALIDADE DE REDE (QoS)
 Quando o lead perguntar por que o plano Federal é melhor, mais rápido, ou por
