@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
 from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
+from app import meta_capi
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
@@ -179,13 +180,28 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> bool:
 
 
 async def _avisar_evento_pixel(conversa: Conversa, nome: str) -> None:
-    """Manda pro navegador do lead disparar um evento do Pixel (Lead, InitiateCheckout, CompleteRegistration, ...)."""
-    if conversa.websocket_visitante is None:
-        return
-    try:
-        await conversa.websocket_visitante.send_json({"type": "evento", "nome": nome})
-    except Exception:
-        pass
+    """
+    Dispara um evento (Lead, InitiateCheckout, CompleteRegistration, ...)
+    nos DOIS canais — Pixel do navegador E API de Conversões (CAPI, 28/09) —
+    com o MESMO event_id, pra Meta deduplicar automaticamente (conta como
+    um evento só). CAPI reforça sinal pra quem tem Pixel de navegador
+    bloqueado (iPhone, ad blocker) — achado na análise da campanha (28/09).
+    """
+    event_id = meta_capi.novo_event_id()
+
+    ws = conversa.websocket_visitante
+    if ws is not None:
+        try:
+            await ws.send_json({"type": "evento", "nome": nome, "event_id": event_id})
+        except Exception:
+            pass
+
+    ip_cliente = ws.client.host if ws is not None and ws.client else None
+    user_agent = ws.headers.get("user-agent") if ws is not None else None
+    await asyncio.to_thread(
+        meta_capi.enviar_evento,
+        nome, event_id, ip_cliente, user_agent, conversa.lead_phone,
+    )
 
 
 # Ordem do funil pra detectar TRANSIÇÃO de estágio (evento dispara só na

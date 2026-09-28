@@ -491,8 +491,15 @@
       // WhatsApp), InitiateCheckout (mandou pro pagamento/adesão) e
       // CompleteRegistration (contrato assinado e validado). Lista travada
       // pra nunca disparar um nome de evento arbitrário vindo do servidor.
+      // event_id (28/09): o servidor manda o MESMO id pro CAPI (API de
+      // Conversões, lado servidor) — passar ele aqui faz a Meta deduplicar
+      // os dois disparos (Pixel + CAPI) como um evento só, em vez de contar
+      // duas vezes.
       const EVENTOS_PIXEL_VALIDOS = ['Lead', 'InitiateCheckout', 'CompleteRegistration'];
-      if(EVENTOS_PIXEL_VALIDOS.includes(data.nome)) fbq('track', data.nome);
+      if(EVENTOS_PIXEL_VALIDOS.includes(data.nome)){
+        if(data.event_id) fbq('track', data.nome, {}, {eventID: data.event_id});
+        else fbq('track', data.nome);
+      }
     } else if(data.type === 'mensagem'){
       esconderDigitando();
       travarEnvio(false);
