@@ -54,7 +54,12 @@
     background-image:
       linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
       url('/static/img/banner-cabecalho.webp');
-    background-size:cover; background-position:center;
+    /* 28/09: faltava travar background-repeat — sem isso, quando o
+       cabeçalho usa "contain" (regra de desktop mais abaixo) e sobra
+       espaço vazio na lateral, o navegador REPETE a imagem pra preencher
+       (padrão do CSS) — foi isso que criou o efeito de "banner triplicado"
+       que o Sandro viu, não é a mesma imagem 3 vezes de propósito. */
+    background-size:cover; background-position:center; background-repeat:no-repeat;
     /* 28/09: voltou pra proporção original (padding pequeno, sem min-height,
        sem filtro) a pedido do Diegão — no desktop, o cabeçalho mais alto e
        o filtro de saturação tinham ficado estranhos. Fica assim até a
