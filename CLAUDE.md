@@ -49,6 +49,8 @@ copiar este arquivo pra raiz da pasta de trabalho.
 4. Chave, senha e credencial nunca no git nem em documento compartilhado.
 5. Tráfego pago: Pixel, eventos e UTM configurados antes de subir verba.
 6. Todo aprendizado real vira skill/passo a passo reutilizável.
+7. No fim de cada projeto: resumo de tudo que se aprendeu com ele (o que
+   funcionou, erros, decisões), pra levar pros próximos projetos.
 
 ## Federal Connect (este repo)
 
