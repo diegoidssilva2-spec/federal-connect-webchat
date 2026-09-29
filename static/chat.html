@@ -431,7 +431,10 @@
   // de afiliado (R$69,90) — o site público mostrava R$49,90 (Vivo 40GB),
   // mas esse plano não existe na tabela de afiliado da Federal. Mesmo valor
   // usado em app/knowledge_base.py, atualizar os dois juntos se mudar.
-  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
+  // 29/09 (ideia do Sandro, pedido Diegão): abertura se apresenta como
+  // representante oficial das operadoras, sem citar Federal nem IA — muita
+  // gente não conhece a Federal e isso passa mais segurança logo de cara.
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Me chamo Diego, sou representante oficial da TIM, Vivo e Claro.\n\nAqui você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a opção abaixo que melhor combina com você para a gente continuar o atendimento:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',
