@@ -51,6 +51,11 @@ copiar este arquivo pra raiz da pasta de trabalho.
 6. Todo aprendizado real vira skill/passo a passo reutilizável.
 7. No fim de cada projeto: resumo de tudo que se aprendeu com ele (o que
    funcionou, erros, decisões), pra levar pros próximos projetos.
+8. Cada projeto tem um `APRENDIZADOS_<PROJETO>.md` na pasta dele no Drive
+   (linha do tempo de falhas e correções, o que funcionou, o que não pode
+   mais errar, o que falta melhorar). Ler antes de mexer no projeto e
+   acrescentar uma linha a cada falha corrigida ou melhoria. Federal Connect:
+   id `1IFh0GMEvl-BajXJVucmfw6X6384zOwoi`.
 
 ## Federal Connect (este repo)
 
