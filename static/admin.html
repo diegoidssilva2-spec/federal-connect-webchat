@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Painel — Federal Conect</title>
+<!-- Chart.js (28/09, dashboard de relatórios) — CDN, sem custo/chave. Se
+     ficar offline, renderDashboardAvancado() detecta e só pula os gráficos,
+     o resto do painel continua normal. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#2B2050; --bg-2:#372A66; --linha:rgba(155,89,232,0.25);
@@ -33,6 +37,44 @@
   .card-metrica .valor{ font-size:28px; font-weight:700; }
   .card-metrica .rotulo{ font-size:12px; color:var(--texto-fraco); margin-top:4px; }
   #view-relatorios h3{ font-size:14px; color:var(--texto-fraco); text-transform:uppercase; letter-spacing:.5px; margin:0 0 12px; }
+
+  /* Dashboard 3D/neon (28/09, pedido Diegão) — cards em degradê com borda
+     neon acesa e sombra em relevo (efeito de "flutuar" da tela), separado
+     do bloco de métricas simples que já existia (não alterado). Base de
+     design registrada no Cérebro Mestre: neon, alto relevo, degradê,
+     brilho, animação sutil — reaproveitar em outros painéis/relatórios. */
+  #dashboard-avancado h3{ font-size:14px; color:var(--texto-fraco); text-transform:uppercase; letter-spacing:.5px; margin:32px 0 12px; }
+  .cards-metricas-neon{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; margin-bottom:8px; }
+  .card-neon{
+    background:linear-gradient(155deg, #3A2D72 0%, #241A44 100%);
+    border:1px solid rgba(94,235,184,0.35); border-radius:16px; padding:18px 20px;
+    box-shadow:0 0 0 1px rgba(94,235,184,0.08), 0 0 18px rgba(61,217,160,0.18),
+      0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+    transition:box-shadow .2s ease;
+  }
+  .card-neon:hover{
+    box-shadow:0 0 0 1px rgba(94,235,184,0.18), 0 0 26px rgba(61,217,160,0.3),
+      0 10px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .card-neon .valor{
+    font-size:30px; font-weight:800; color:#5EEBB8;
+    text-shadow:0 0 6px rgba(94,235,184,0.7), 0 0 16px rgba(61,217,160,0.4);
+  }
+  .card-neon .rotulo{ font-size:12px; color:var(--texto-fraco); margin-top:5px; }
+  .grid-graficos{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px; margin-bottom:28px; }
+  .card-grafico{
+    background:linear-gradient(160deg, #34275F 0%, #211939 100%);
+    border:1px solid rgba(155,89,232,0.35); border-radius:16px; padding:18px 20px;
+    box-shadow:0 0 0 1px rgba(155,89,232,0.08), 0 0 20px rgba(155,89,232,0.15),
+      0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .card-grafico h4{
+    margin:0 0 14px; font-size:13px; color:var(--texto); text-transform:uppercase; letter-spacing:.6px;
+    text-shadow:0 0 8px rgba(155,89,232,0.6);
+  }
+  .card-grafico .caixa-canvas{ position:relative; height:230px; }
+  .card-grafico.grande{ grid-column:1 / -1; }
+  .card-grafico.grande .caixa-canvas{ height:260px; }
   .barra-estagio{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px; }
   .barra-estagio .rotulo-estagio{ width:150px; flex-shrink:0; text-transform:capitalize; }
   .barra-estagio .trilho{ flex:1; background:rgba(255,255,255,0.06); border-radius:6px; height:10px; overflow:hidden; }
@@ -41,15 +83,46 @@
 
   #resumo-topo-lista{ padding:12px 16px; border-bottom:1px solid var(--linha); font-size:12.5px; color:var(--texto-fraco); background:rgba(255,255,255,0.02); flex-shrink:0; }
   #resumo-topo-lista strong{ color:var(--verde); font-size:15px; }
-  #lista-scroll{ flex:1; overflow-y:auto; }
+  #lista-scroll{ flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
   #lista{ background:var(--bg-2); border-right:1px solid var(--linha); overflow-y:auto; display:flex; flex-direction:column; }
-  .item{ padding:14px 16px; border-bottom:1px solid var(--linha); cursor:pointer; }
-  .item:hover{ background:rgba(255,255,255,0.03); }
-  .item.selecionado{ background:rgba(63,174,106,0.12); border-left:3px solid var(--verde); }
-  .item.precisa-humano{ background:rgba(217,146,44,0.14); border-left:3px solid var(--laranja); animation: piscar 1.6s infinite; }
+
+  /* Card de lead em "botão neon" (28/09, pedido Diegão) — mesma pegada do
+     botão de anexar/enviar do chat.html: fundo em degradê, borda neon
+     SEMPRE acesa (não só no hover), sombra em relevo. Hover intensifica o
+     brilho, igual lá. Cada lead novo que entra já nasce com essa cara. */
+  .item{
+    padding:12px 14px; border-radius:12px; cursor:pointer;
+    background:linear-gradient(155deg, #3A2D72 0%, #241A44 100%);
+    border:1px solid rgba(94,235,184,0.35);
+    box-shadow:0 0 6px rgba(61,217,160,0.35), 0 0 14px rgba(61,217,160,0.15),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    transition:box-shadow .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .item:hover{
+    border-color:rgba(94,235,184,0.7);
+    box-shadow:0 0 10px rgba(94,235,184,0.7), 0 0 22px rgba(61,217,160,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    transform:translateY(-1px);
+  }
+  .item:active{ transform:translateY(0); }
+  .item.selecionado{
+    border-color:var(--verde-forte, #5EEBB8);
+    box-shadow:0 0 0 1px rgba(94,235,184,0.5), 0 0 16px rgba(94,235,184,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .item.precisa-humano{
+    border-color:rgba(217,146,44,0.7);
+    box-shadow:0 0 8px rgba(217,146,44,0.6), 0 0 18px rgba(217,146,44,0.35),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    animation: piscar-neon 1.6s infinite;
+  }
   .item.precisa-humano.selecionado{ animation:none; }
-  @keyframes piscar{ 0%,100%{ background:rgba(217,146,44,0.14); } 50%{ background:rgba(217,146,44,0.32); } }
+  @keyframes piscar-neon{
+    0%,100%{ box-shadow:0 0 8px rgba(217,146,44,0.6), 0 0 18px rgba(217,146,44,0.35), inset 0 1px 0 rgba(255,255,255,0.06); }
+    50%{ box-shadow:0 0 14px rgba(217,146,44,0.9), 0 0 28px rgba(217,146,44,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
+  }
   .item .nome{ font-size:14px; font-weight:600; }
+  .item .hora-item{ float:right; font-size:11px; font-weight:400; color:var(--texto-fraco); }
   .item .estagio{ font-size:11px; text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
   .estagio.novo{ color:var(--texto-fraco); }
   .estagio.conversando{ color:var(--verde); }
@@ -138,10 +211,19 @@
   document.getElementById('btn-entrar').addEventListener('click', () => entrar(false));
   document.getElementById('input-senha').addEventListener('keydown', (e) => { if(e.key === 'Enter') entrar(false); });
 
-  // Ao carregar a página (inclusive num F5), tenta reconectar sozinho com a
-  // senha já salva antes de mostrar a tela de login — só cai no login de
-  // verdade se não tiver senha salva ou se ela não for mais válida.
-  entrar(true);
+  // Export CSV manda a senha no header X-Senha (não na URL, que vai pros
+  // logs do Render) e baixa o arquivo via blob.
+  document.getElementById('link-exportar-csv').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const r = await fetch('/exportar-leads.csv', {headers: {'X-Senha': senhaAtual || ''}});
+    if(!r.ok){ alert('Não foi possível exportar os leads.'); return; }
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'leads_federal_connect.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
   // --- Abas Conversas / Relatórios ---
   document.getElementById('aba-conversas').addEventListener('click', () => trocarAba('conversas'));
@@ -191,7 +273,147 @@
           <div class="contagem">${porEstagio[e]}</div>
         </div>
       `).join('')}
+      <div id="dashboard-avancado"></div>
     `;
+    renderDashboardAvancado(porEstagio);
+  }
+
+  // --- Dashboard avançado (28/09, pedido Diegão) — gráficos em cima do que
+  // já existia acima, sem alterar nada do bloco de cima. ---
+
+  // Leads "qualificados" (proxy, 28/09): não existe flag explícita de
+  // qualificação nos dados — usamos "já passou da etapa de pagamento" como
+  // aproximação de lead qualificado (chegou perto o suficiente da compra).
+  const ESTAGIOS_QUALIFICADO = ['aguardando_pagamento', 'aguardando_ativacao', 'concluido'];
+
+  // 28/09 (bug encontrado pelo Diegão): "Novos leads hoje" (card de cima,
+  // já existia) usava toDateString() — dia LOCAL do navegador. Os gráficos
+  // novos usavam toISOString() — dia em UTC. Como o Brasil é UTC-3, todo
+  // lead criado depois das 21h (horário local) já caía no dia SEGUINTE em
+  // UTC, inflando o "hoje" do gráfico e não batendo com o card de cima
+  // ("54" vs "130"). Corrigido: as duas contagens usam a MESMA função de
+  // dia local agora — nunca mais podem divergir.
+  function diaCurtoLocal(ts){
+    const d = new Date(ts * 1000);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  }
+  function diaRotulo(isoStr){
+    const [ano, mes, dia] = isoStr.split('-');
+    return `${dia}/${mes}`;
+  }
+
+  let chartPizza = null, chartDias = null, chartAscensao = null;
+
+  function renderDashboardAvancado(porEstagio){
+    const container = document.getElementById('dashboard-avancado');
+    if(!container) return;
+
+    const qualificados = conversas.filter(c => ESTAGIOS_QUALIFICADO.includes(c.estagio)).length;
+
+    // Tempo médio até concluir (proxy: última mensagem - criação, só de
+    // quem já está "concluido" — não existe timestamp exato de conclusão
+    // guardado, então usamos a última atualização como aproximação).
+    const concluidosComTempo = conversas.filter(c => c.estagio === 'concluido' && c.criada_em && c.ultima_mensagem_em);
+    let tempoMedioTexto = '—';
+    if(concluidosComTempo.length){
+      const mediaSegundos = concluidosComTempo.reduce((soma, c) => soma + (c.ultima_mensagem_em - c.criada_em), 0) / concluidosComTempo.length;
+      const horas = mediaSegundos / 3600;
+      tempoMedioTexto = horas < 1 ? `${Math.round(mediaSegundos / 60)} min` : `${horas.toFixed(1)} h`;
+    }
+
+    // Leads por dia — últimos 14 dias corridos (hoje incluso), sempre em
+    // dia LOCAL (ver comentário de diaCurtoLocal acima).
+    const HOJE = new Date();
+    const dias = [];
+    for(let i = 13; i >= 0; i--){
+      const d = new Date(HOJE);
+      d.setDate(d.getDate() - i);
+      dias.push(diaCurtoLocal(d.getTime() / 1000));
+    }
+    const porDia = {};
+    dias.forEach(d => porDia[d] = 0);
+    conversas.forEach(c => {
+      if(!c.criada_em) return;
+      const dia = diaCurtoLocal(c.criada_em);
+      if(dia in porDia) porDia[dia]++;
+    });
+    const valoresPorDia = dias.map(d => porDia[d]);
+    const acumulado = [];
+    valoresPorDia.reduce((soma, v, i) => { acumulado[i] = soma + v; return acumulado[i]; }, 0);
+
+    container.innerHTML = `
+      <h3>📊 Métricas avançadas</h3>
+      <div class="cards-metricas-neon">
+        <div class="card-neon"><div class="valor">${qualificados}</div><div class="rotulo">Leads qualificados (chegaram no pagamento+)</div></div>
+        <div class="card-neon"><div class="valor">${tempoMedioTexto}</div><div class="rotulo">Tempo médio até concluir</div></div>
+        <div class="card-neon"><div class="valor">${valoresPorDia[valoresPorDia.length - 1]}</div><div class="rotulo">Leads hoje (gráfico)</div></div>
+        <div class="card-neon"><div class="valor">${acumulado[acumulado.length - 1]}</div><div class="rotulo">Acumulado (14 dias)</div></div>
+      </div>
+      <div class="grid-graficos">
+        <div class="card-grafico">
+          <h4>Leads por estágio</h4>
+          <div class="caixa-canvas"><canvas id="grafico-pizza"></canvas></div>
+        </div>
+        <div class="card-grafico">
+          <h4>Leads por dia (últimos 14 dias)</h4>
+          <div class="caixa-canvas"><canvas id="grafico-dias"></canvas></div>
+        </div>
+        <div class="card-grafico grande">
+          <h4>Ascensão — leads acumulados</h4>
+          <div class="caixa-canvas"><canvas id="grafico-ascensao"></canvas></div>
+        </div>
+      </div>
+    `;
+
+    if(typeof Chart === 'undefined') return; // CDN do Chart.js não carregou (offline?) — resto do painel segue normal
+
+    const CORES_ESTAGIO = {
+      novo: '#8B7FB8', conversando: '#3DD9A0', aguardando_humano: '#D9922C',
+      com_humano: '#E0A93D', aguardando_pagamento: '#C9A24B',
+      aguardando_ativacao: '#5EEBB8', concluido: '#6A3FC0',
+    };
+    const rotulosEstagio = Object.keys(ROTULOS_ESTAGIO).map(e => ROTULOS_ESTAGIO[e]);
+    const valoresEstagio = Object.keys(ROTULOS_ESTAGIO).map(e => porEstagio[e] || 0);
+    const coresEstagio = Object.keys(ROTULOS_ESTAGIO).map(e => CORES_ESTAGIO[e]);
+
+    const opcoesComuns = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#F3F1FA', font: { size: 11 } } } },
+    };
+    const eixosComGrid = {
+      x: { ticks: { color: '#BDB0DE', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { ticks: { color: '#BDB0DE', font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+    };
+
+    if(chartPizza) chartPizza.destroy();
+    chartPizza = new Chart(document.getElementById('grafico-pizza'), {
+      type: 'doughnut',
+      data: { labels: rotulosEstagio, datasets: [{ data: valoresEstagio, backgroundColor: coresEstagio, borderColor: '#211939', borderWidth: 2 }] },
+      options: { ...opcoesComuns, plugins: { ...opcoesComuns.plugins, legend: { ...opcoesComuns.plugins.legend, position: 'bottom' } } },
+    });
+
+    if(chartDias) chartDias.destroy();
+    chartDias = new Chart(document.getElementById('grafico-dias'), {
+      type: 'bar',
+      data: { labels: dias.map(diaRotulo), datasets: [{ label: 'Leads', data: valoresPorDia, backgroundColor: '#5EEBB8', borderRadius: 4 }] },
+      options: { ...opcoesComuns, plugins: { legend: { display: false } }, scales: eixosComGrid },
+    });
+
+    if(chartAscensao) chartAscensao.destroy();
+    chartAscensao = new Chart(document.getElementById('grafico-ascensao'), {
+      type: 'line',
+      data: {
+        labels: dias.map(diaRotulo),
+        datasets: [{
+          label: 'Leads acumulados', data: acumulado, borderColor: '#9B59E8', backgroundColor: 'rgba(155,89,232,0.18)',
+          fill: true, tension: 0.35, pointBackgroundColor: '#5EEBB8', pointRadius: 3,
+        }],
+      },
+      options: { ...opcoesComuns, plugins: { legend: { display: false } }, scales: eixosComGrid },
+    });
   }
 
   // Guarda a senha no localStorage pra sobreviver a um F5 na página — antes
@@ -200,25 +422,62 @@
   // Diegão: "quando eu atualizo a página, ela sai do login").
   const CHAVE_SENHA = 'federal_painel_senha';
 
+  // Heartbeat (27/09): no celular a conexão morre calada (tela bloqueada,
+  // troca de rede) e o painel seguia mostrando a lista velha, com clique
+  // indo pro vazio. Ping a cada 20s; 50s sem nenhum sinal do servidor =
+  // conexão morta, reconecta. Voltar pro app também confere e reconecta.
+  let ultimoSinal = Date.now();
+  setInterval(() => {
+    if(!ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(ws.readyState !== 1 || Date.now() - ultimoSinal > 50000){ entrar(true); return; }
+    ws.send(JSON.stringify({acao:'ping'}));
+  }, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || !ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(ws.readyState !== 1 || Date.now() - ultimoSinal > 25000) entrar(true);
+    else ws.send(JSON.stringify({acao:'ping'}));
+  });
+
   function entrar(silencioso){
     const senha = silencioso ? localStorage.getItem(CHAVE_SENHA) : document.getElementById('input-senha').value;
     if(!senha) return;
     senhaAtual = senha;
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${protocolo}://${location.host}/ws/painel?senha=${encodeURIComponent(senha)}`);
+    // Senha vai como 1ª mensagem, não na URL — URL fica gravada em texto
+    // puro nos logs de acesso do Render (achado no incidente de 27/09).
+    if(ws && ws.readyState <= 1){ try{ ws.close(); }catch(e){} }
+    ws = new WebSocket(`${protocolo}://${location.host}/ws/painel`);
+    const esteWs = ws;
+    let autenticado = false;
 
     ws.onopen = () => {
+      ws.send(JSON.stringify({acao:'auth', senha}));
+    };
+    // Só entra no painel quando o servidor responde (senha aceita) — senha
+    // errada fecha a conexão antes de qualquer mensagem chegar.
+    ws.addEventListener('message', () => {
+      ultimoSinal = Date.now();
+      if(autenticado) return;
+      autenticado = true;
       localStorage.setItem(CHAVE_SENHA, senha);
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
-      const linkCsv = document.getElementById('link-exportar-csv');
-      if(linkCsv) linkCsv.href = `/exportar-leads.csv?senha=${encodeURIComponent(senhaAtual)}`;
-    };
+      // Reconectou com uma conversa aberta: recarrega o histórico dela.
+      if(selecionada) esteWs.send(JSON.stringify({acao:'abrir', session_id: selecionada}));
+    });
     ws.onclose = (ev) => {
-      if(ev.code === 4001){
-        localStorage.removeItem(CHAVE_SENHA);
-        if(!silencioso) alert('Senha incorreta.');
+      if(esteWs !== ws) return; // conexão antiga, já substituída
+      // Conexão que já estava logada caiu (celular bloqueou, trocou de
+      // rede, deploy): reconecta sozinho em vez de largar o painel parado
+      // com a lista velha na tela e clique indo pro vazio (27/09).
+      if(autenticado && localStorage.getItem(CHAVE_SENHA)){
+        setTimeout(() => { if(esteWs === ws) entrar(true); }, 1500);
+        return;
       }
+      // Caiu antes de logar = senha errada (o 4001 às vezes chega sem
+      // código pelo proxy do Render) — não fica em loop tentando.
+      localStorage.removeItem(CHAVE_SENHA);
+      if(!silencioso) alert(ev.code === 4001 ? 'Senha incorreta.' : 'Não foi possível entrar. Confira a senha e tente de novo.');
       document.getElementById('login').style.display = 'flex';
       document.getElementById('app').classList.remove('ativo');
     };
@@ -277,7 +536,7 @@
       div.className = 'item' + (c.session_id === selecionada ? ' selecionado' : '') + (urgente ? ' precisa-humano' : '');
       const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
       const rotuloEstagio = urgente ? '🚨 Precisa de atendimento humano' : c.estagio.replace(/_/g,' ');
-      div.innerHTML = `<div class="nome">${nome}</div><div class="estagio ${c.estagio}">${rotuloEstagio}</div>`;
+      div.innerHTML = `<div class="nome">${nome}<span class="hora-item">${horaCurta(c.ultima_mensagem_em)}</span></div><div class="estagio ${c.estagio}">${rotuloEstagio}</div>`;
       div.addEventListener('click', () => selecionar(c.session_id));
       el.appendChild(div);
     });
@@ -364,7 +623,9 @@
     if(opcoes && opcoes.comHistorico){
       // Carrega o histórico da conversa (sem isso, abrir uma conversa em
       // andamento aparecia vazia, dando impressão de painel quebrado).
-      ws.send(JSON.stringify({acao:'abrir', session_id: sessionId}));
+      // Conexão fechada: reconecta, e a reconexão já pede o histórico.
+      if(ws && ws.readyState === 1) ws.send(JSON.stringify({acao:'abrir', session_id: sessionId}));
+      else entrar(true);
     }
   }
 
@@ -374,8 +635,19 @@
     return `${nome}${telefone} — <span class="estagio ${c.estagio}">${c.estagio.replace(/_/g,' ')}</span>`;
   }
 
+  // Horário (27/09, pedido Diegão): hoje mostra só HH:MM, outro dia mostra
+  // DD/MM HH:MM. Timestamps vêm em segundos (time.time() do servidor).
+  function horaCurta(ts){
+    if(!ts) return '';
+    const d = new Date(ts * 1000);
+    const hhmm = d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    if(d.toDateString() === new Date().toDateString()) return hhmm;
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + hhmm;
+  }
+
   function notasELinha(c){
     const partes = [];
+    partes.push(`🕒 início ${horaCurta(c.criada_em)} · última ${horaCurta(c.ultima_mensagem_em)}`);
     if(c.lead_origem) partes.push('📍 ' + c.lead_origem);
     if(c.lead_notes) partes.push('📝 ' + c.lead_notes);
     return partes.join(' &nbsp;·&nbsp; ');
@@ -485,15 +757,34 @@
     return comLinks.replace(/\n/g, '<br>');
   }
 
+  // Rótulo de quem falou (27/09, pedido Diegão): "IA Federal" em vez de
+  // "ia", e o nome do lead (quando a IA já capturou) em vez de "lead".
+  function rotuloRemetente(remetente){
+    if(remetente === 'ia') return 'IA Federal Connect';
+    if(remetente === 'operador') return 'Operador';
+    const c = conversas.find(x => x.session_id === selecionada);
+    const nome = (c && c.lead_name) || 'Lead';
+    return nome.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function renderMensagemNova(remetente, texto){
     const msgs = document.getElementById('msgs');
     if(!msgs) return;
     const div = document.createElement('div');
     div.className = 'msg ' + remetente;
-    div.innerHTML = `<div class="tag">${remetente}</div>${formatarMensagem(texto)}`;
+    div.innerHTML = `<div class="tag">${rotuloRemetente(remetente)}</div>${formatarMensagem(texto)}`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
+
+  // Ao carregar a página (inclusive num F5), tenta reconectar sozinho com a
+  // senha já salva antes de mostrar a tela de login — só cai no login de
+  // verdade se não tiver senha salva ou se ela não for mais válida.
+  // Fica no FIM do script de propósito: chamado lá em cima (antes de
+  // `const CHAVE_SENHA` / `let piscaTitulo` existirem) dava ReferenceError
+  // e matava o resto do script — o painel não listava conversa nenhuma
+  // (causa do "sumiram as conversas do painel", 27/09).
+  entrar(true);
 </script>
 
 </body>

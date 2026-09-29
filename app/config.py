@@ -71,6 +71,19 @@ CRM_WEBHOOK_URL = os.environ.get("CRM_WEBHOOK_URL", "")
 # lead de verdade e fazer remarketing de quem abriu e não conversou.
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()
 
+# API de Conversões da Meta (CAPI, 28/09) — manda os mesmos eventos do Pixel
+# também pelo SERVIDOR (não só pelo navegador do lead). Reforça o sinal pra
+# quem usa iPhone/ad blocker/navegador que bloqueia o Pixel — achado na
+# análise da campanha: o Pixel de navegador nunca perde evento por bloqueio
+# de rede do lado do servidor. Gerar em Gerenciador de Eventos > Pixel
+# Federal Connect > Configurações > API de Conversões > Gerar token de
+# acesso. Sem essa variável, tudo continua funcionando igual — CAPI só fica
+# desligado (o Pixel de navegador sozinho já funcionava antes disso).
+META_CAPI_ACCESS_TOKEN = os.environ.get("META_CAPI_ACCESS_TOKEN", "").strip()
+# Código de teste (opcional) — só usado quando testando em Eventos de Teste
+# no Gerenciador de Eventos. Deixar vazio em produção.
+META_CAPI_TEST_EVENT_CODE = os.environ.get("META_CAPI_TEST_EVENT_CODE", "").strip()
+
 # Service account do Google Cloud (28/09, projeto FLYER-Automacao) — dá
 # acesso de leitura/escrita direto em planilhas e pastas do Drive que forem
 # compartilhadas com o e-mail dela como Editor. Usado por app/google_service.py.

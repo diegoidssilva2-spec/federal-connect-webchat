@@ -13,15 +13,24 @@ import csv
 import io
 import json
 import logging
+import mimetypes
 import re
 import time
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Header
+
+# 27/09: o Python desta imagem/SO não tem ".webp" no banco de tipos padrão
+# (mimetypes) — o StaticFiles servia a logo do avatar como
+# application/octet-stream em vez de image/webp, e alguns navegadores/
+# webviews recusavam exibir a imagem por causa disso (avatar sumia). Registro
+# explícito garante o Content-Type certo em qualquer ambiente.
+mimetypes.add_type("image/webp", ".webp")
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
 from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
+from app import meta_capi
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
@@ -60,17 +69,28 @@ async def pagina_chat():
     with open("static/chat.html", encoding="utf-8") as f:
         html = f.read()
     pixel_id = META_PIXEL_ID if META_PIXEL_ID.isdigit() else ""
-    return HTMLResponse(html.replace("__META_PIXEL_ID__", pixel_id))
+    # 27/09: sem isso, alguns navegadores/webviews de celular guardam a
+    # página por conta própria (sem servidor mandar nenhuma instrução) e o
+    # lead/operador fica preso numa versão de antes de um ajuste — foi o
+    # motivo do Diegão não ver mudança nenhuma num teste. no-store força
+    # buscar a versão atual toda vez; a página é pequena, não pesa.
+    return HTMLResponse(
+        html.replace("__META_PIXEL_ID__", pixel_id),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/painel")
 async def pagina_painel():
-    return FileResponse("static/admin.html")
+    # Mesmo motivo do no-store na página do chat (ver pagina_chat acima).
+    return FileResponse("static/admin.html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/exportar-leads.csv")
-async def exportar_leads(senha: str = Query(...)):
-    if senha != OPERATOR_PASSWORD:
+async def exportar_leads(x_senha: str | None = Header(default=None)):
+    # Senha vem no header X-Senha, não na URL — query string fica gravada em
+    # texto puro nos logs de acesso do Render (achado no incidente de 27/09).
+    if x_senha != OPERATOR_PASSWORD:
         raise HTTPException(status_code=403, detail="Senha incorreta")
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -159,14 +179,60 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> bool:
     return bool(conversa.lead_phone) and not telefone_antes
 
 
-async def _avisar_lead_capturado(conversa: Conversa) -> None:
-    """Manda pro navegador do lead disparar o evento Lead do Pixel."""
-    if conversa.websocket_visitante is None:
-        return
-    try:
-        await conversa.websocket_visitante.send_json({"type": "evento", "nome": "Lead"})
-    except Exception:
-        pass
+async def _avisar_evento_pixel(conversa: Conversa, nome: str) -> None:
+    """
+    Dispara um evento (Lead, InitiateCheckout, CompleteRegistration, ...)
+    nos DOIS canais — Pixel do navegador E API de Conversões (CAPI, 28/09) —
+    com o MESMO event_id, pra Meta deduplicar automaticamente (conta como
+    um evento só). CAPI reforça sinal pra quem tem Pixel de navegador
+    bloqueado (iPhone, ad blocker) — achado na análise da campanha (28/09).
+    """
+    event_id = meta_capi.novo_event_id()
+
+    ws = conversa.websocket_visitante
+    if ws is not None:
+        try:
+            await ws.send_json({"type": "evento", "nome": nome, "event_id": event_id})
+        except Exception:
+            pass
+
+    ip_cliente = ws.client.host if ws is not None and ws.client else None
+    user_agent = ws.headers.get("user-agent") if ws is not None else None
+    await asyncio.to_thread(
+        meta_capi.enviar_evento,
+        nome, event_id, ip_cliente, user_agent, conversa.lead_phone,
+    )
+
+
+# Ordem do funil pra detectar TRANSIÇÃO de estágio (evento dispara só na
+# primeira vez que a conversa alcança aquele ponto, nunca de novo a cada
+# mensagem seguinte que ficar no mesmo estágio ou mais à frente).
+_ORDEM_ESTAGIO = [
+    "novo", "conversando", "aguardando_humano", "com_humano",
+    "aguardando_pagamento", "aguardando_ativacao", "concluido",
+]
+
+
+def _indice_estagio(estagio: str) -> int:
+    return _ORDEM_ESTAGIO.index(estagio) if estagio in _ORDEM_ESTAGIO else -1
+
+
+def _eventos_pixel_por_transicao(estagio_antes: str, estagio_depois: str) -> list[str]:
+    """
+    Mapeia transição de estágio pra eventos padrão do Pixel (28/09, pedido
+    Diegão — dar mais sinal pro Facebook otimizar por quem avança de
+    verdade no funil, não só por quem abre o chat):
+    - InitiateCheckout: primeira vez que chega em "aguardando_pagamento"
+      (a IA já mandou o lead pra plataforma de adesão/pagamento).
+    - CompleteRegistration: primeira vez que chega em "aguardando_ativacao"
+      OU "concluido" (contrato já assinado e validado — cadastro completo).
+    """
+    eventos = []
+    if _indice_estagio(estagio_depois) >= _indice_estagio("aguardando_pagamento") > _indice_estagio(estagio_antes):
+        eventos.append("InitiateCheckout")
+    if _indice_estagio(estagio_depois) >= _indice_estagio("aguardando_ativacao") > _indice_estagio(estagio_antes):
+        eventos.append("CompleteRegistration")
+    return eventos
 
 
 def _historico_para_payload(conversa: Conversa) -> list[dict]:
@@ -267,6 +333,12 @@ async def ws_chat(
         # trouxe cada lead, pra comparar de verdade o que converte.
         if origem:
             conversa.lead_origem = "anúncio:" + re.sub(r"[^\w\-/. ]", "", origem)[:80]
+        # 27/09 (incidente "leads sumiram do painel"): antes a sessão só ia
+        # pro banco quando o visitante mandava a 1ª mensagem — quem abria o
+        # chat e não digitava aparecia no painel e sumia a cada redeploy, e
+        # quem recarregava a página depois de um restart caía de novo na
+        # boas-vindas. Agora grava já na abertura (upsert, não apaga nada).
+        await _persistir(conversa)
 
     conversa.websocket_visitante = websocket
     await websocket.send_json({"type": "sessao", "session_id": conversa.session_id})
@@ -281,6 +353,13 @@ async def ws_chat(
         while True:
             raw = await websocket.receive_text()
             data = json.loads(raw)
+            # Heartbeat do chat (27/09): mesmo esquema do painel — a conexão
+            # do visitante morria calada (celular em segundo plano, rede) e
+            # a mensagem digitada não saía. O chat manda ping e reconecta
+            # sozinho se não receber pong.
+            if data.get("tipo") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
             texto_lead = data.get("texto", "").strip()
             imagem_base64 = data.get("imagem_base64")
             imagem_media_type = data.get("imagem_media_type")
@@ -303,7 +382,7 @@ async def ws_chat(
                 # falar, tipo "o Bruno é motorista de app", e atualiza toda
                 # vez que a pessoa der mais informação, não só na primeira).
                 if await _atualizar_perfil_lead(conversa):
-                    await _avisar_lead_capturado(conversa)
+                    await _avisar_evento_pixel(conversa, "Lead")
                 await _persistir(conversa)
                 await _broadcast_painel()
                 continue
@@ -325,20 +404,37 @@ async def ws_chat(
             conversa.history = resultado["updated_history"]
             resposta = resultado["reply"]
 
-            await websocket.send_json({"type": "mensagem", "remetente": "ia", "texto": resposta})
+            # Manda pra conexão ATUAL do visitante (se ele reconectou enquanto
+            # a IA pensava, a antiga já morreu) e não deixa uma falha de envio
+            # impedir a gravação no banco logo abaixo — a resposta fica no
+            # histórico e aparece quando ele reconectar.
+            try:
+                await (conversa.websocket_visitante or websocket).send_json(
+                    {"type": "mensagem", "remetente": "ia", "texto": resposta}
+                )
+            except Exception:
+                logger.warning("Falha ao entregar resposta da IA ao visitante %s (desconectado)", conversa.session_id)
             await _enviar_mensagem_para_operadores_da_conversa(conversa, "ia", resposta)
 
             # CRM leve: mesmo refresh de nome/telefone/origem/notas via IA
             # que roda no ramo "humano_ativo" acima — mantém o painel em dia
             # a cada mensagem, seja quem for que está respondendo o lead.
             if await _atualizar_perfil_lead(conversa):
-                await _avisar_lead_capturado(conversa)
+                await _avisar_evento_pixel(conversa, "Lead")
 
             # Classificação automática — a IA decide o estágio sozinha,
             # ninguém no painel precisa clicar pra mudar isso manualmente.
+            estagio_antes = conversa.estagio
             conversa.estagio = resultado["estagio_sugerido"]
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
+
+            # Pixel (28/09, pedido Diegão): InitiateCheckout/CompleteRegistration
+            # disparam na primeira vez que a conversa alcança cada marco —
+            # dá ao Facebook sinal de quem avança de verdade no funil, não só
+            # quem abre o chat (isso já existia só pro evento Lead).
+            for evento in _eventos_pixel_por_transicao(estagio_antes, conversa.estagio):
+                await _avisar_evento_pixel(conversa, evento)
 
             if conversa.estagio == "concluido":
                 # 27/09 (pedido Diegão): lead finalizado é arquivado numa
@@ -362,7 +458,11 @@ async def ws_chat(
             await _broadcast_painel()
 
     except WebSocketDisconnect:
-        conversa.websocket_visitante = None
+        # Só limpa se ainda for esta conexão — se o visitante já reconectou,
+        # a queda tardia da conexão antiga não pode apagar a nova (senão a
+        # mensagem do operador deixava de chegar nele).
+        if conversa.websocket_visitante is websocket:
+            conversa.websocket_visitante = None
         await _broadcast_painel()
 
 
@@ -373,12 +473,22 @@ async def ws_chat(
 # ---------------------------------------------------------------------------
 
 @app.websocket("/ws/painel")
-async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
-    if senha != OPERATOR_PASSWORD:
-        await websocket.close(code=4001)
+async def ws_painel(websocket: WebSocket):
+    # A senha chega como 1ª mensagem ({"acao": "auth", "senha": ...}), não na
+    # URL — query string fica gravada em texto puro nos logs de acesso do
+    # Render (achado no incidente de 27/09).
+    await websocket.accept()
+    try:
+        auth = json.loads(await asyncio.wait_for(websocket.receive_text(), timeout=10))
+    except Exception:
+        auth = {}
+    if not isinstance(auth, dict) or auth.get("acao") != "auth" or auth.get("senha") != OPERATOR_PASSWORD:
+        try:
+            await websocket.close(code=4001)
+        except Exception:
+            pass
         return
 
-    await websocket.accept()
     OPERADORES_CONECTADOS.add(websocket)
     await _broadcast_painel()
 
@@ -387,6 +497,12 @@ async def ws_painel(websocket: WebSocket, senha: str = Query(...)):
             raw = await websocket.receive_text()
             data = json.loads(raw)
             acao = data.get("acao")
+            # Heartbeat do painel (27/09): no celular a conexão morre calada
+            # (tela bloqueada / troca de rede) e o painel ficava clicando no
+            # vazio. O painel manda ping a cada 20s e, sem pong, reconecta.
+            if acao == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
             session_id = data.get("session_id")
             conversa = obter(session_id)
             if conversa is None:

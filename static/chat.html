@@ -30,24 +30,103 @@
   body{
     margin:0; height:100vh; height:100dvh; color:var(--texto);
     font-family:'Helvetica Neue', Arial, sans-serif; display:flex; flex-direction:column;
-    /* Voltou pro degradê roxo original — a tentativa com imagem de fundo
-       ficou cinza/quebrada (arquivo grande demais / fora do formato certo).
-       Ver nota em chat_fundo_formato_recomendado no final do arquivo pra
-       quando o Diegão recriar a imagem no tamanho certo. */
-    background: radial-gradient(1200px 800px at 15% -10%, #8C5FE0 0%, #2B2050 60%);
+    /* Fundo com fibra óptica (28/09, arte do Diegão no Magnific) — a
+       tentativa anterior (27/09) tinha quebrado por causa do formato do
+       arquivo; essa aqui foi gerada certa (1536x768) e o degradê por cima
+       garante contraste pro texto das mensagens em qualquer trecho da
+       imagem. background-size:cover cobre a tela toda em qualquer
+       proporção de celular sem repetir/esticar feio.
+       EVOLUÇÃO FUTURA (pedido 28/09, ver CHECKLIST_GERAL): trocar essa foto
+       parada por vídeo/animação de fibra em loop — mesma ideia já vale pro
+       header logo abaixo. */
+    background-image:
+      linear-gradient(180deg, rgba(20,14,42,0.55) 0%, rgba(20,14,42,0.35) 40%, rgba(20,14,42,0.6) 100%),
+      url('/static/img/fundo-chat.webp');
+    background-size:cover; background-position:center; background-repeat:no-repeat;
   }
   header{
-    padding:16px 20px; background:rgba(55,42,102,0.85); backdrop-filter: blur(6px);
+    position:relative; overflow:hidden;
+    /* Arte escolhida pelo Diegão (banner gerado no Magnific, 27/09) — salva
+       localmente em static/img (não depende do link do Magnific, que
+       expira). Cobre o cabeçalho inteiro; degradê escuro por cima garante
+       que o título continue legível em qualquer parte da imagem. Pedido:
+       depois vira vídeo/animação — por ora fica como foto parada. */
+    background-image:
+      linear-gradient(90deg, rgba(30,20,60,0.82) 0%, rgba(30,20,60,0.45) 55%, rgba(30,20,60,0.75) 100%),
+      url('/static/img/banner-cabecalho.webp');
+    /* 28/09: faltava travar background-repeat — sem isso, quando o
+       cabeçalho usa "contain" (regra de desktop mais abaixo) e sobra
+       espaço vazio na lateral, o navegador REPETE a imagem pra preencher
+       (padrão do CSS) — foi isso que criou o efeito de "banner triplicado"
+       que o Sandro viu, não é a mesma imagem 3 vezes de propósito. */
+    background-size:cover; background-position:center; background-repeat:no-repeat;
+    /* 28/09: voltou pra proporção original (padding pequeno, sem min-height,
+       sem filtro) a pedido do Diegão — no desktop, o cabeçalho mais alto e
+       o filtro de saturação tinham ficado estranhos. Fica assim até a
+       evolução planejada (ver ideia de animação abaixo). */
+    padding:16px 20px; backdrop-filter: blur(2px);
     border-bottom:1px solid rgba(155,89,232,0.25);
     display:flex; align-items:center; gap:12px; flex-shrink:0;
   }
-  header .avatar{
-    width:38px; height:38px; border-radius:50%;
-    background: radial-gradient(circle at 30% 30%, var(--verde-forte), var(--verde) 55%, #3DD9A0);
-    display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
-    color:#0D2B22; flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
+  /* Fibra óptica em CSS retirada (27/09, pedido Diegão) — as linhas retas
+     sem ondulação ficaram estranhas por cima da foto. Fica pra uma próxima
+     evolução (fibra de verdade, com curva, talvez direto na arte ou em
+     vídeo). header > * continua útil: mantém o avatar acima do degradê da
+     foto de fundo. */
+  header > *{ position:relative; z-index:1; }
+
+  /* Faixa de planos passando (27/09, pedido Diegão) — marquee em CSS puro,
+     sem crédito de IA. Preços vêm do mesmo texto que a IA usa
+     (app/knowledge_base.py) — atualizar os dois juntos se o preço mudar. */
+  #faixa-planos{
+    position:relative; z-index:1; overflow:hidden; flex-shrink:0;
+    background:#241A44; border-bottom:1px solid rgba(155,89,232,0.25);
+    padding:7px 0; white-space:nowrap;
   }
-  header .ponto{ width:10px; height:10px; border-radius:50%; background:var(--verde-forte); }
+  #faixa-planos .trilho{
+    /* 22s (original) → 44s → 59s → 79s (mais 1/3 mais devagar, 27/09) —
+       cada ajuste é sobre a velocidade JÁ reduzida, não a original. */
+    display:inline-flex; gap:28px; animation: passar 79s linear infinite;
+    padding-left:100%;
+  }
+  #faixa-planos:hover .trilho, #faixa-planos:active .trilho{ animation-play-state:paused; }
+  #faixa-planos .item{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--texto); }
+  #faixa-planos .item b{ color:var(--verde-forte); }
+  /* Item da marca (27/09): circula junto com os planos. Negrito neon verde
+     a pedido do Diegão — text-shadow em camadas simula o brilho neon. */
+  #faixa-planos .item.marca{ font-size:13.5px; }
+  #faixa-planos .item.marca b{
+    color:var(--verde-forte); font-weight:800; letter-spacing:.3px;
+    text-shadow: 0 0 4px rgba(94,235,184,0.9), 0 0 10px rgba(61,217,160,0.7), 0 0 18px rgba(61,217,160,0.4);
+  }
+  #faixa-planos .sep{ color:var(--texto-fraco); opacity:.5; }
+  @keyframes passar{ from{ transform:translateX(0); } to{ transform:translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce){
+    header::before, header::after, #faixa-planos .trilho{ animation:none; }
+  }
+
+  header .avatar{
+    position:relative;
+    width:38px; height:38px; border-radius:50%;
+    /* Logo do chip gerado no Magnific (27/09) substitui o "FC" — o texto
+       continua no HTML como fallback (aparece 1 frame antes da imagem
+       carregar, ou se o arquivo falhar por algum motivo). */
+    background-image: url('/static/img/avatar-chip.webp');
+    background-size:cover; background-position:center;
+    color:transparent; font-size:0; /* esconde o "FC" quando a imagem carrega */
+    flex-shrink:0; box-shadow:0 0 0 2px rgba(61,217,160,0.25);
+  }
+  /* Bolinha de status no canto do avatar (27/09) — substitui o texto
+     "online agora"/"reconectando…" que ficava no cabeçalho, removido daqui
+     junto com o nome (foram pra faixa de planos). Verde = conectado,
+     laranja piscando = reconectando. */
+  header .ponto{
+    position:absolute; bottom:-1px; right:-1px; width:11px; height:11px;
+    border-radius:50%; background:var(--verde-forte);
+    border:2px solid var(--bg-2); transition:background .2s;
+  }
+  header .ponto.reconectando{ background:#E0A93D; animation:piscar-ponto 1s infinite; }
+  @keyframes piscar-ponto{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
   header .titulo{ font-weight:600; font-size:15px; }
   header .sub{ font-size:12px; color:var(--texto-fraco); }
 
@@ -76,11 +155,35 @@
     padding:0 20px; font-weight:600; cursor:pointer; flex-shrink:0;
   }
   button:hover{ background:var(--verde-forte); }
-  #btn-anexar{
-    background:none; border:1px solid rgba(155,89,232,0.3); color:var(--texto);
-    width:44px; height:44px; border-radius:10px; padding:0; font-size:18px; flex-shrink:0;
+  /* Botão de enviar "mais robusto" (27/09, pedido Diegão): mais alto, texto
+     maior, sombra e leve efeito de toque — deixa de parecer um botão fino
+     genérico e passa mais confiança de "clique aqui". */
+  button[type="submit"]{
+    height:46px; padding:0 24px; font-size:15px; font-weight:700;
+    box-shadow:0 3px 10px rgba(61,217,160,0.35);
+    transition:transform .1s ease, box-shadow .1s ease;
   }
-  #btn-anexar:hover{ border-color:var(--verde); background:none; }
+  button[type="submit"]:active{ transform:translateY(1px); box-shadow:0 1px 4px rgba(61,217,160,0.35); }
+  /* Ícone de anexar em 3D (27/09, pedido Diegão) — a primeira versão pintou
+     o FUNDO do botão de verde igual ao Enviar, mas o ícone gerado é da
+     MESMA cor verde/neon — ficava verde em cima de verde, sumia. Correção:
+     fundo volta a ser neutro (contorno, igual era antes), só o ícone (a
+     imagem) é novo; ele aparece por conta própria. */
+  /* Borda neon fixa (27/09, pedido Diegão) — antes só acendia no :hover,
+     agora fica sempre ligada (o :hover só intensifica um pouco o brilho). */
+  #btn-anexar{
+    background:rgba(36,26,68,0.6); border:1px solid var(--verde);
+    box-shadow:0 0 6px rgba(61,217,160,0.7), 0 0 14px rgba(61,217,160,0.4), inset 0 0 6px rgba(61,217,160,0.15);
+    width:46px; height:46px; border-radius:10px; padding:0; flex-shrink:0;
+    background-image:url('/static/img/icone-anexar.png');
+    background-repeat:no-repeat; background-position:center; background-size:60%;
+    color:transparent; font-size:0; /* esconde o 📎 quando a imagem carrega */
+  }
+  #btn-anexar:hover{
+    border-color:var(--verde-forte);
+    box-shadow:0 0 10px rgba(94,235,184,0.9), 0 0 22px rgba(61,217,160,0.6), inset 0 0 8px rgba(94,235,184,0.25);
+  }
+  #btn-anexar:active{ transform:translateY(1px); }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
   #respostas-rapidas{ display:flex; flex-direction:column; gap:8px; align-self:flex-start; max-width:88%; }
@@ -103,17 +206,59 @@
     #btn-anexar{ width:40px; height:40px; font-size:16px; }
     button[type="submit"]{ padding:0 14px; }
   }
+
+  /* 28/09 (pedido Sandro): voltou a ocupar a tela inteira no desktop (o
+     widget estreito não agradou). Problema original (banner cortando os
+     preços numa faixa larga e baixa) resolvido diferente agora: a partir de
+     560px o cabeçalho troca de background-size:cover (que corta pra
+     preencher) pra "contain" (mostra a arte INTEIRA, sem cortar nada) — o
+     header fica mais alto pra caber, e a cor de fundo (mesma tonalidade
+     escura do degradê) preenche o espaço vazio dos lados sem ficar em
+     branco. Celular (abaixo de 560px) não muda nada, continua cover como
+     sempre esteve. */
+  @media (min-width: 560px){
+    header{
+      background-size: contain;
+      background-color: #1E1440;
+      min-height: 150px;
+    }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="avatar">FC</div>
-  <div>
-    <div class="titulo">Federal Conect</div>
-    <div class="sub">Consultor digital · online agora</div>
-  </div>
+  <div class="avatar">FC<span class="ponto" id="status-ponto"></span></div>
 </header>
+
+<!-- 27/09 (pedido Diegão): "Federal Conect" e o status saíram do cabeçalho
+     fixo e entraram na faixa que passa — o cabeçalho fica só com a foto/
+     logo, e o nome da marca circula junto com os planos ("é nosso portal
+     de vendas, temos que explorar ao máximo" — a marca some do estático e
+     vira parte do conteúdo que sempre está se movendo). -->
+<div id="faixa-planos">
+  <div class="trilho">
+    <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 60GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 100GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 160GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">🚚 <b>Frete grátis</b> para todo o Brasil</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 500GB — R$299,90/mês</span><span class="sep">•</span>
+    <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span><span class="sep">•</span>
+    <!-- Repetido pra emenda ficar invisível no loop (marquee em CSS). -->
+    <span class="item marca">⚡ <b>Federal Connect</b> · Associados · online agora</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 60GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 100GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 80GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>Claro</b> 160GB — R$99,90/mês</span><span class="sep">•</span>
+    <span class="item">📶 <b>TIM</b> 100GB — R$69,90/mês</span><span class="sep">•</span>
+    <span class="item">🚚 <b>Frete grátis</b> para todo o Brasil</span><span class="sep">•</span>
+    <span class="item">📶 <b>Vivo</b> 500GB — R$299,90/mês</span><span class="sep">•</span>
+    <span class="item">✅ Sem fidelidade · Sem consulta SPC/Serasa</span>
+  </div>
+</div>
 
 <div id="mensagens"></div>
 
@@ -159,7 +304,7 @@
   function addMsg(remetente, texto, imagemDataUrl){
     const div = document.createElement('div');
     div.className = 'msg ' + remetente;
-    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'Consultor' : 'Atendente'}</div>`;
+    const tag = remetente === 'lead' ? '' : `<div class="tag">${remetente === 'ia' ? 'IA Federal Connect' : 'Atendente'}</div>`;
     const imgHtml = imagemDataUrl ? `<img src="${imagemDataUrl}" />` : '';
     const hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     div.innerHTML = tag + formatarMensagem(texto) + imgHtml + `<div class="hora">${hora}</div>`;
@@ -223,17 +368,70 @@
   // e isso vai pro painel/CSV, pra saber qual conjunto/imagem trouxe o lead.
   const origemAnuncio = [params.get('utm_source'), params.get('utm_campaign'), params.get('utm_content')]
     .filter(Boolean).join('/');
-  const qs = new URLSearchParams();
-  if(sessionId) qs.set('session_id', sessionId);
-  if(origemAnuncio) qs.set('origem', origemAnuncio);
-
   const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
-  const ws = new WebSocket(`${protocolo}://${location.host}/ws/chat${qs.toString() ? '?' + qs.toString() : ''}`);
+  // 27/09: o texto "online agora"/"reconectando…" saiu do cabeçalho (foi
+  // removido junto com o nome) — o status agora é só a bolinha no avatar.
+  const statusPontoEl = document.getElementById('status-ponto');
+  function marcarStatus(reconectando){
+    statusPontoEl.classList.toggle('reconectando', reconectando);
+  }
+
+  // Reconexão automática (27/09): antes existia UMA conexão só, criada no
+  // carregamento. Se ela caísse (celular em segundo plano, troca de rede,
+  // proxy do Render), o botão Enviar simplesmente não fazia nada e o lead
+  // achava que o chat travou. Agora: reconecta sozinho, ping a cada 20s pra
+  // detectar conexão morta, e a mensagem digitada durante a queda é enviada
+  // assim que a conexão volta.
+  let ws = null;
+  let ultimoSinal = Date.now();
+  let tentativas = 0;
+  let pendente = null; // texto digitado enquanto a conexão estava caída
+
+  function conectar(){
+    if(ws && ws.readyState <= 1){ try{ ws.close(); }catch(e){} }
+    const qs = new URLSearchParams();
+    if(sessionId) qs.set('session_id', sessionId);
+    if(origemAnuncio) qs.set('origem', origemAnuncio);
+    const este = new WebSocket(`${protocolo}://${location.host}/ws/chat${qs.toString() ? '?' + qs.toString() : ''}`);
+    ws = este;
+    este.onopen = () => {
+      tentativas = 0;
+      ultimoSinal = Date.now();
+      marcarStatus(false);
+    };
+    este.onmessage = (event) => {
+      if(este !== ws) return; // conexão antiga, já substituída
+      ultimoSinal = Date.now();
+      tratarMensagem(JSON.parse(event.data));
+    };
+    este.onclose = () => {
+      if(este !== ws) return;
+      marcarStatus(true);
+      const espera = Math.min(1000 * 2 ** tentativas, 10000);
+      tentativas++;
+      setTimeout(() => { if(este === ws) conectar(); }, espera);
+    };
+  }
+
+  setInterval(() => {
+    if(!ws || ws.readyState !== WebSocket.OPEN) return;
+    if(Date.now() - ultimoSinal > 50000){ conectar(); return; }
+    ws.send(JSON.stringify({tipo:'ping'}));
+  }, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || !ws) return;
+    if(ws.readyState !== WebSocket.OPEN || Date.now() - ultimoSinal > 25000) conectar();
+    else ws.send(JSON.stringify({tipo:'ping'}));
+  });
 
   // 26/09: 219 de 223 visitantes abriam o chat e nunca digitavam nada. A
   // abertura agora fala direto com quem trabalha na rua e oferece botões de
   // um toque — mandar a primeira mensagem fica sem esforço nenhum.
-  const MENSAGEM_BOAS_VINDAS = 'Oi! 👋 Aqui é o consultor da Federal Conect.\nInternet que não acaba no meio da corrida, a partir de R$ 69,90 — Vivo, Claro ou TIM, sem consulta ao SPC/Serasa.\nToca numa opção aí embaixo pra gente começar:';
+  // 27/09 (texto ditado pelo Diegão). 28/09: preço corrigido pro valor real
+  // de afiliado (R$69,90) — o site público mostrava R$49,90 (Vivo 40GB),
+  // mas esse plano não existe na tabela de afiliado da Federal. Mesmo valor
+  // usado em app/knowledge_base.py, atualizar os dois juntos se mudar.
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Eu sou a inteligência artificial da Federal Conect e irei guiá-lo no seu atendimento.\n\nNa Federal Associados você conta com um clube de benefícios exclusivo, com planos a partir de R$ 69,90 e sem consulta SPC/Serasa.\n\nEscolha a melhor opção para que possamos começar:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',
@@ -249,7 +447,12 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = txt;
-      b.addEventListener('click', () => enviarTexto(txt));
+      b.addEventListener('click', () => {
+        // Pixel (28/09): clicar em "ver planos e preços" é o sinal mais
+        // direto de intenção de compra logo na abertura — ViewContent.
+        if(txt.includes('planos e preços')) fbq('track', 'ViewContent');
+        enviarTexto(txt);
+      });
       wrap.appendChild(b);
     });
     mensagensEl.appendChild(wrap);
@@ -260,31 +463,53 @@
     if(el) el.remove();
   }
 
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+  function tratarMensagem(data){
     if(data.type === 'sessao'){
       sessionId = data.session_id;
       localStorage.setItem('federal_session_id', sessionId);
     } else if(data.type === 'historico'){
-      // Reconectou (recarregou a página / saiu e voltou) — o servidor manda
-      // de volta o que já tinha sido conversado, pra não perder tudo.
+      // Reconectou (recarregou a página / saiu e voltou / conexão caiu) — o
+      // servidor manda de volta o que já tinha sido conversado. A tela é
+      // redesenhada do zero pra não duplicar mensagens a cada reconexão.
       // Se vier vazio, é sessão nova mesmo: mostra a mensagem de boas-vindas.
+      esconderDigitando();
+      travarEnvio(false);
       if(data.mensagens && data.mensagens.length){
         jaEnviouMensagem = true;
+        mensagensEl.innerHTML = '';
+        addMsg('ia', MENSAGEM_BOAS_VINDAS); // abertura fica sempre no topo
         data.mensagens.forEach(m => addMsg(m.remetente, m.texto));
       } else if(mensagensEl.children.length === 0){
         addMsg('ia', MENSAGEM_BOAS_VINDAS);
         mostrarRespostasRapidas();
       }
+      if(pendente !== null){
+        const texto = pendente;
+        pendente = null;
+        enviarTexto(texto);
+      }
     } else if(data.type === 'evento'){
-      // Servidor avisa quando a IA capturou o WhatsApp do lead.
-      if(data.nome === 'Lead') fbq('track', 'Lead');
+      // Servidor avisa marcos do funil pro Pixel (28/09): Lead (capturou o
+      // WhatsApp), InitiateCheckout (mandou pro pagamento/adesão) e
+      // CompleteRegistration (contrato assinado e validado). Lista travada
+      // pra nunca disparar um nome de evento arbitrário vindo do servidor.
+      // event_id (28/09): o servidor manda o MESMO id pro CAPI (API de
+      // Conversões, lado servidor) — passar ele aqui faz a Meta deduplicar
+      // os dois disparos (Pixel + CAPI) como um evento só, em vez de contar
+      // duas vezes.
+      const EVENTOS_PIXEL_VALIDOS = ['Lead', 'InitiateCheckout', 'CompleteRegistration'];
+      if(EVENTOS_PIXEL_VALIDOS.includes(data.nome)){
+        if(data.event_id) fbq('track', data.nome, {}, {eventID: data.event_id});
+        else fbq('track', data.nome);
+      }
     } else if(data.type === 'mensagem'){
       esconderDigitando();
       travarEnvio(false);
       addMsg(data.remetente, data.texto);
     }
-  };
+  }
+
+  conectar();
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -293,7 +518,14 @@
 
   function enviarTexto(texto){
     if(!texto && !imagemPendente) return;
-    if(ws.readyState !== WebSocket.OPEN) return;
+    // Conexão caída: guarda a mensagem (o texto continua no campo) e
+    // reconecta — ela sai sozinha assim que a conexão voltar.
+    if(!ws || ws.readyState !== WebSocket.OPEN){
+      pendente = texto;
+      marcarStatus(true);
+      if(!ws || ws.readyState !== WebSocket.CONNECTING) conectar();
+      return;
+    }
 
     removerRespostasRapidas();
     if(!jaEnviouMensagem){

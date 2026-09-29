@@ -99,8 +99,17 @@ def salvar(conversa) -> None:
     # não precisa dela de volta depois de um restart.
     historico_limpo = []
     for m in conversa.history:
-        role = m.get("role") if isinstance(m, dict) else None
-        conteudo = m.get("content") if isinstance(m, dict) else None
+        if isinstance(m, dict):
+            role, conteudo = m.get("role"), m.get("content")
+        else:
+            # Depois de passar pela IA, o histórico volta do LangGraph como
+            # objetos (HumanMessage/AIMessage), não dict. Antes eles eram
+            # descartados aqui e o banco gravava o histórico VAZIO desde
+            # 24/09 — todo restart/deploy apagava as conversas da IA
+            # (incidente 27/09: F5 voltava pro início, painel sem histórico).
+            tipo = getattr(m, "type", None)
+            role = {"ai": "assistant", "human": "user"}.get(tipo)
+            conteudo = getattr(m, "content", None)
         if isinstance(conteudo, list):
             texto = " ".join(
                 b.get("text", "") for b in conteudo
