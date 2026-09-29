@@ -30,6 +30,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
 from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
+from app.knowledge_base import LINK_GABRIEL_GENERICO
 from app import meta_capi
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
@@ -60,6 +61,50 @@ async def _persistir(conversa: Conversa) -> None:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# 29/09 (Sandro mandou mensagem e o bot não respondeu): a chamada da IA não
+# tinha tratamento de erro — qualquer falha da API da Anthropic (crédito
+# acabado, chave inválida, sobrecarga) derrubava a conexão calada e a
+# mensagem do lead sumia da tela. Agora a falha é tratada (ver ws_chat) e
+# fica registrada aqui, consultável em /saude-ia sem precisar abrir log.
+STATUS_IA = {
+    "ia_ok": True,  # resultado da ÚLTIMA chamada da IA
+    "ultimo_sucesso": None,
+    "ultima_falha": None,
+    "motivo_ultima_falha": None,
+    "falhas_desde_o_ultimo_deploy": 0,
+}
+
+
+def _descrever_falha_ia(erro: Exception) -> str:
+    """Traduz o erro da API da Anthropic pra uma causa legível (sem segredo)."""
+    texto = str(erro)
+    status = getattr(erro, "status_code", None)
+    if "credit balance" in texto.lower():
+        return "CRÉDITO DA ANTHROPIC ACABOU — recarregar em console.anthropic.com (Billing)"
+    if status == 401:
+        return "CHAVE DA API INVÁLIDA OU REVOGADA — conferir ANTHROPIC_API_KEY no Render"
+    if status == 429:
+        return "LIMITE DE USO DA API ATINGIDO (rate limit) — costuma ser temporário"
+    if status in (500, 502, 503, 529):
+        return "API da Anthropic sobrecarregada/instável — costuma ser temporário"
+    return f"{type(erro).__name__} (status {status}): {texto[:200]}"
+
+
+_TRAVAS_CONVERSA: dict[str, asyncio.Lock] = {}
+
+
+def _trava_da_conversa(session_id: str) -> asyncio.Lock:
+    trava = _TRAVAS_CONVERSA.get(session_id)
+    if trava is None:
+        trava = _TRAVAS_CONVERSA[session_id] = asyncio.Lock()
+    return trava
+
+
+@app.get("/saude-ia")
+async def saude_ia():
+    return STATUS_IA
 
 
 @app.get("/")
@@ -393,15 +438,64 @@ async def ws_chat(
             # Mesma lógica que já existia no meta_client.py pro print do
             # ClickSign no WhatsApp — o agent.py não muda nada, só recebe
             # a imagem em base64 do jeito que ele já espera.
-            resultado = run_agent(
-                lead_phone=conversa.session_id,  # não é telefone aqui, é o id da sessão
-                lead_name=conversa.lead_name,
-                user_message=texto_lead,
-                history=conversa.history,
-                image_base64=imagem_base64,
-                image_media_type=imagem_media_type,
-            )
-            conversa.history = resultado["updated_history"]
+            # 29/09: em thread (antes travava o servidor inteiro — todos os
+            # outros chats e o painel — enquanto a IA pensava) e com
+            # tratamento de erro (antes, se a API da Anthropic falhasse, a
+            # conexão caía calada e a mensagem do lead sumia da tela dele).
+            # Trava por conversa: como a IA agora roda em thread, um lead que
+            # reconecta no meio da resposta podia disparar uma 2ª chamada em
+            # paralelo, e uma resposta apagava a outra do histórico.
+            resultado = None
+            resposta_falha = None
+            async with _trava_da_conversa(conversa.session_id):
+                try:
+                    resultado = await asyncio.to_thread(
+                        run_agent,
+                        lead_phone=conversa.session_id,  # não é telefone aqui, é o id da sessão
+                        lead_name=conversa.lead_name,
+                        user_message=texto_lead,
+                        history=conversa.history,
+                        image_base64=imagem_base64,
+                        image_media_type=imagem_media_type,
+                    )
+                except Exception as erro:
+                    motivo = _descrever_falha_ia(erro)
+                    STATUS_IA["ia_ok"] = False
+                    STATUS_IA["ultima_falha"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    STATUS_IA["motivo_ultima_falha"] = motivo
+                    STATUS_IA["falhas_desde_o_ultimo_deploy"] += 1
+                    logger.exception("FALHA_IA na conversa %s — %s", conversa.session_id, motivo)
+                    resposta_falha = (
+                        "Opa, tive uma instabilidade rapidinha aqui 🙏\n\n"
+                        "Já já te respondo! Se preferir não esperar, fala direto com "
+                        f"nosso consultor: {LINK_GABRIEL_GENERICO}"
+                    )
+                    # Guarda a mensagem do lead + o aviso no histórico: não
+                    # some da tela dele se reconectar, e o painel mostra que
+                    # precisa de alguém olhando.
+                    conversa.history.append({"role": "user", "content": mensagem_espelho})
+                    conversa.history.append({"role": "assistant", "content": resposta_falha})
+                else:
+                    STATUS_IA["ia_ok"] = True
+                    STATUS_IA["ultimo_sucesso"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    conversa.history = resultado["updated_history"]
+
+            if resposta_falha is not None:
+                try:
+                    await (conversa.websocket_visitante or websocket).send_json(
+                        {"type": "mensagem", "remetente": "ia", "texto": resposta_falha}
+                    )
+                except Exception:
+                    logger.warning("Falha ao entregar aviso de instabilidade ao visitante %s", conversa.session_id)
+                await _enviar_mensagem_para_operadores_da_conversa(conversa, "ia", resposta_falha)
+                # Sinaliza no painel sem fazer o lead "voltar" de etapa se já
+                # estava avançado no cadastro.
+                if _indice_estagio(conversa.estagio) < _indice_estagio("aguardando_humano"):
+                    conversa.estagio = "aguardando_humano"
+                await _persistir(conversa)
+                await _broadcast_painel()
+                continue
+
             resposta = resultado["reply"]
 
             # Manda pra conexão ATUAL do visitante (se ele reconectou enquanto

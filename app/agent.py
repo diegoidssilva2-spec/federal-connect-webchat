@@ -61,7 +61,11 @@ def call_llm(state: AgentState) -> AgentState:
     response = client.messages.create(
         model=PRIMARY_MODEL,
         max_tokens=500,
-        system=SYSTEM_PROMPT,
+        # 29/09: cache do prompt (a cartilha tem ~12 mil tokens e é igual em
+        # toda mensagem). Com cache, as repetições custam ~10% do preço de
+        # entrada normal e respondem mais rápido. Se não der pra cachear, a
+        # API só ignora — não quebra nada.
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=history,
         tools=[WEB_SEARCH_TOOL],
     )
