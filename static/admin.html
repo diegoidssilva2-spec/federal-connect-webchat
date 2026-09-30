@@ -17,7 +17,7 @@
   body{ margin:0; height:100vh; background:var(--bg); color:var(--texto); font-family:'Helvetica Neue',Arial,sans-serif; }
 
   #login{ display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:14px; }
-  #login input{ padding:12px 16px; border-radius:8px; border:1px solid var(--linha); background:var(--bg-2); color:var(--texto); width:260px; }
+  #login input[type=password]{ padding:12px 16px; border-radius:8px; border:1px solid var(--linha); background:var(--bg-2); color:var(--texto); width:260px; }
   #login button{ padding:12px 20px; border-radius:8px; border:none; background:var(--verde); color:#0D2B22; font-weight:600; cursor:pointer; }
 
   #app{ display:none; height:100vh; flex-direction:column; }
@@ -174,6 +174,7 @@
 <div id="login">
   <div style="font-size:18px;font-weight:600">Painel Federal Conect</div>
   <input id="input-senha" type="password" placeholder="Senha do operador" />
+  <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="lembrar-senha" type="checkbox" checked style="width:auto" /> Lembrar minha senha</label>
   <button id="btn-entrar">Entrar</button>
 </div>
 
@@ -421,6 +422,22 @@
   // lugar nenhum, o painel sempre voltava pra tela de login (queixa do
   // Diegão: "quando eu atualizo a página, ela sai do login").
   const CHAVE_SENHA = 'federal_painel_senha';
+  // "Lembrar minha senha" marcado = localStorage (vale dias depois); desmarcado
+  // = só na aba aberta (sessionStorage).
+  function lerSenha(){
+    try{ return localStorage.getItem(CHAVE_SENHA) || sessionStorage.getItem(CHAVE_SENHA); }catch(e){ return null; }
+  }
+  function guardarSenha(senha){
+    try{
+      const lembrar = document.getElementById('lembrar-senha').checked;
+      (lembrar ? localStorage : sessionStorage).setItem(CHAVE_SENHA, senha);
+      (lembrar ? sessionStorage : localStorage).removeItem(CHAVE_SENHA);
+    }catch(e){}
+  }
+  function esquecerSenha(){
+    try{ localStorage.removeItem(CHAVE_SENHA); sessionStorage.removeItem(CHAVE_SENHA); }catch(e){}
+  }
+  let tentativasSilenciosas = 0;
 
   // Heartbeat (27/09): no celular a conexão morre calada (tela bloqueada,
   // troca de rede) e o painel seguia mostrando a lista velha, com clique
@@ -428,18 +445,18 @@
   // conexão morta, reconecta. Voltar pro app também confere e reconecta.
   let ultimoSinal = Date.now();
   setInterval(() => {
-    if(!ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(!ws || !lerSenha()) return;
     if(ws.readyState !== 1 || Date.now() - ultimoSinal > 50000){ entrar(true); return; }
     ws.send(JSON.stringify({acao:'ping'}));
   }, 20000);
   document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState !== 'visible' || !ws || !localStorage.getItem(CHAVE_SENHA)) return;
+    if(document.visibilityState !== 'visible' || !ws || !lerSenha()) return;
     if(ws.readyState !== 1 || Date.now() - ultimoSinal > 25000) entrar(true);
     else ws.send(JSON.stringify({acao:'ping'}));
   });
 
   function entrar(silencioso){
-    const senha = silencioso ? localStorage.getItem(CHAVE_SENHA) : document.getElementById('input-senha').value;
+    const senha = silencioso ? lerSenha() : document.getElementById('input-senha').value;
     if(!senha) return;
     senhaAtual = senha;
     const protocolo = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -459,7 +476,8 @@
       ultimoSinal = Date.now();
       if(autenticado) return;
       autenticado = true;
-      localStorage.setItem(CHAVE_SENHA, senha);
+      tentativasSilenciosas = 0;
+      guardarSenha(senha);
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').classList.add('ativo');
       // Reconectou com uma conversa aberta: recarrega o histórico dela.
@@ -470,13 +488,23 @@
       // Conexão que já estava logada caiu (celular bloqueou, trocou de
       // rede, deploy): reconecta sozinho em vez de largar o painel parado
       // com a lista velha na tela e clique indo pro vazio (27/09).
-      if(autenticado && localStorage.getItem(CHAVE_SENHA)){
+      if(autenticado && lerSenha()){
         setTimeout(() => { if(esteWs === ws) entrar(true); }, 1500);
         return;
       }
       // Caiu antes de logar = senha errada (o 4001 às vezes chega sem
       // código pelo proxy do Render) — não fica em loop tentando.
-      localStorage.removeItem(CHAVE_SENHA);
+      // Reabrindo o painel depois de muito tempo, o servidor do Render pode
+      // estar dormindo e a conexão cai antes de logar. Isso NÃO é senha
+      // errada: só apaga a senha salva se o servidor recusou (4001) ou se foi
+      // digitada agora; no resto, tenta de novo algumas vezes.
+      if(silencioso && ev.code !== 4001 && tentativasSilenciosas < 6){
+        tentativasSilenciosas++;
+        setTimeout(() => { if(esteWs === ws) entrar(true); }, 3000);
+        return;
+      }
+      tentativasSilenciosas = 0;
+      if(!silencioso || ev.code === 4001) esquecerSenha();
       if(!silencioso) alert(ev.code === 4001 ? 'Senha incorreta.' : 'Não foi possível entrar. Confira a senha e tente de novo.');
       document.getElementById('login').style.display = 'flex';
       document.getElementById('app').classList.remove('ativo');
@@ -681,7 +709,10 @@
       renderMensagemNova('operador', texto);
       input.value = '';
       delete rascunhos[sessionId];
+      input.focus(); // continua digitando sem tocar no campo de novo
     });
+    // Tocar em "Enviar" não tira o foco do campo (mantém o teclado aberto no celular).
+    form.querySelector('button[type="submit"]').addEventListener('mousedown', (e) => e.preventDefault());
   }
 
   // Chamado antes de trocar de conversa (selecionar) — pega o que tá no
