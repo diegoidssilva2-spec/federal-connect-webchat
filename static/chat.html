@@ -434,10 +434,10 @@
   // 29/09 (ideia do Sandro, pedido Diegão): abertura se apresenta como
   // representante oficial das operadoras, sem citar Federal nem IA — muita
   // gente não conhece a Federal e isso passa mais segurança logo de cara.
-  // 29/09: clube de benefícios destacado em lista com ícone (pedido Diegão) —
-  // mesmos benefícios da seção CLUBE DE BENEFÍCIOS de app/knowledge_base.py,
-  // atualizar os dois juntos se mudar.
-  const MENSAGEM_BOAS_VINDAS = 'Olá! Me chamo Diego, sou representante oficial da TIM, Vivo e Claro.\n\nPlanos a partir de *R$ 69,90*, sem consulta SPC/Serasa — e você ainda ganha acesso ao nosso *Clube de benefícios*:\n\n🎬 1 ingresso de cinema grátis por mês (Cinemark)\n🧴 1 perfume de bolso exclusivo\n🛡️ Auxílio funerário de até R$ 3.000\n🛍️ Descontos em +10 mil lojas, com cashback de até 70%\n\nEscolha a opção abaixo que melhor combina com você para a gente continuar o atendimento:';
+  // 30/09 (pedido Diegão): saudação NÃO lista mais os benefícios do clube —
+  // pra não afastar o lead; o bot só fala deles se o lead perguntar (ver seção
+  // CLUBE DE BENEFÍCIOS de app/knowledge_base.py).
+  const MENSAGEM_BOAS_VINDAS = 'Olá! Me chamo Diego, sou representante oficial da TIM, Vivo e Claro.\n\nPlanos a partir de *R$ 69,90*, sem consulta SPC/Serasa.\n\nEscolha a opção abaixo que melhor combina com você para a gente continuar o atendimento:';
   const RESPOSTAS_RAPIDAS = [
     '🛵 Trabalho com app/entregas e minha internet acaba',
     '💰 Quero ver os planos e preços',
