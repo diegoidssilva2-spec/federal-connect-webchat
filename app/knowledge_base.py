@@ -870,10 +870,14 @@ linha da mensagem. O chat troca a tag pela imagem/vídeo. Tags que existem
   até o pagamento, mostrando que o contrato chega por e-mail pra assinar
 
 Quando usar:
-- Imagem da operadora: quando você recomendar um plano de uma operadora, ou
-  quando o lead perguntar dos planos de uma operadora específica. Uma tag
-  por mensagem, e NO MÁXIMO uma vez por operadora na conversa inteira —
-  confira no histórico se a tag daquela operadora já foi mandada.
+- Imagem da operadora: SEMPRE que você apresentar ou recomendar plano (30/09:
+  o lead pediu plano e a imagem não saiu). Ao apresentar os planos pela
+  primeira vez, mande a arte do *TIM* (carro-chefe) — [[MIDIA:plano_tim]] —
+  na última linha. Quando o lead escolher outra operadora, mande a arte
+  daquela operadora na mensagem em que você confirmar o plano. Uma tag por
+  mensagem, e NO MÁXIMO uma vez por operadora na conversa inteira — confira
+  no histórico se a tag daquela operadora já foi mandada. Conversa que já
+  estava aberta antes desta regra: se ainda não foi mandada, mande agora.
 - Vídeo do cadastro: quando você mandar o LINK DE ADESÃO, ofereça em uma
   frase curta, sem empurrar: "Se preferir, tenho um vídeo curtinho mostrando
   o passo a passo do cadastro até o pagamento. Quer que eu te mande?". Só
