@@ -135,9 +135,11 @@ async def midia(nome: str, range_header: str | None = Header(default=None, alias
         raise HTTPException(status_code=404)
     try:
         achado = await asyncio.to_thread(midias.obter, nome)
-    except Exception:
+    except Exception as e:
         logger.exception("FALHA_MIDIA %s", nome)
-        raise HTTPException(status_code=503)
+        # Motivo na resposta (só tipo + mensagem curta, sem segredo) pra dar
+        # pra diagnosticar abrindo /midia/<nome> no navegador (30/09).
+        raise HTTPException(status_code=503, detail=f"{type(e).__name__}: {str(e)[:200]}")
     if achado is None:
         raise HTTPException(status_code=404)
     conteudo, tipo = achado

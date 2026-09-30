@@ -336,9 +336,12 @@
   }
 
   function travarEnvio(travar){
-    input.disabled = travar;
+    // readOnly (e não disabled): campo desabilitado perde o foco e o teclado
+    // fecha — o lead tinha que tocar no campo de novo a cada mensagem.
+    input.readOnly = travar;
     form.querySelector('button[type="submit"]').disabled = travar;
     btnAnexar.disabled = travar;
+    if(!travar) input.focus();
   }
 
   // --- anexar imagem ---
