@@ -92,3 +92,10 @@ META_CAPI_TEST_EVENT_CODE = os.environ.get("META_CAPI_TEST_EVENT_CODE", "").stri
 # dependem dela (edição de planilha existente, busca de imagem de plano no
 # Drive) ficam desativados sem quebrar o resto do projeto.
 GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+
+# Pasta do Drive onde ficam as imagens de plano e os vídeos explicativos do
+# chat (30/09, ver app/midias.py). Padrão: "FLYER — Tudo (compartilhado com
+# Service Account)". O arquivo é achado pelo NOME (ex: plano_claro.png).
+DRIVE_PASTA_MIDIAS_ID = os.environ.get(
+    "DRIVE_PASTA_MIDIAS_ID", "1if5DJUdDbOhd1saPvAmFTBW-DLcLQOXO"
+).strip()

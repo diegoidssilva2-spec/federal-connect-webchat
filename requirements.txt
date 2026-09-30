@@ -10,3 +10,7 @@ psycopg[binary]>=3.2
 # ficar criando arquivo novo a cada atualização.
 google-auth>=2.34
 google-api-python-client>=2.140
+
+# Reduz as artes de plano (30/09) — vêm com ~20MB do Magnific; o chat recebe
+# JPEG de 1080px de largura.
+Pillow>=10.4

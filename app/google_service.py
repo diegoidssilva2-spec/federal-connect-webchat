@@ -133,8 +133,14 @@ def buscar_arquivos_por_palavra_chave(pasta_id: str, palavra_chave: str) -> list
         f"'{pasta_id}' in parents and trashed = false and "
         f"name contains '{palavra_chave}'"
     )
+    # supportsAllDrives/includeItemsFromAllDrives (30/09): a pasta "FLYER —
+    # Tudo" fica num Drive compartilhado; sem isso a busca volta vazia.
+    # Mais recente primeiro: se subirem uma versão nova com o mesmo nome,
+    # vale a nova.
     resultado = _drive().files().list(
-        q=query, fields="files(id, name, mimeType)", pageSize=10
+        q=query, fields="files(id, name, mimeType)", pageSize=10,
+        orderBy="modifiedTime desc",
+        supportsAllDrives=True, includeItemsFromAllDrives=True,
     ).execute()
     return resultado.get("files", [])
 
@@ -149,7 +155,7 @@ def baixar_arquivo_bytes(file_id: str) -> bytes:
     from googleapiclient.http import MediaIoBaseDownload
     import io
 
-    request = _drive().files().get_media(fileId=file_id)
+    request = _drive().files().get_media(fileId=file_id, supportsAllDrives=True)
     buffer = io.BytesIO()
     downloader = MediaIoBaseDownload(buffer, request)
     concluido = False

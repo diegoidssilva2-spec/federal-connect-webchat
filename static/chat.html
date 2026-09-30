@@ -185,6 +185,7 @@
   }
   #btn-anexar:active{ transform:translateY(1px); }
   .msg img{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
+  .msg video{ width:100%; max-height:70vh; border-radius:8px; margin-top:6px; display:block; background:#000; }
   .msg a{ color:var(--verde-forte); text-decoration:underline; word-break:break-all; }
   #respostas-rapidas{ display:flex; flex-direction:column; gap:8px; align-self:flex-start; max-width:88%; }
   #respostas-rapidas button{
@@ -298,7 +299,16 @@
       /(https?:\/\/[^\s<]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     );
-    return comLinks.replace(/\n/g, '<br>');
+    // Mídia (30/09): a IA marca [[MIDIA:plano_claro]] / [[MIDIA:video_cadastro]]
+    // e aqui vira a imagem/vídeo servido pelo /midia (vem do Drive). Se o
+    // arquivo ainda não existir no Drive, o elemento some em vez de ficar
+    // quebrado na tela.
+    const comMidia = comLinks.replace(/\[\[MIDIA:([a-z_]+)\]\]/g, (_, nome) =>
+      nome.startsWith('video_')
+        ? `<video class="midia" src="/midia/${nome}" controls playsinline preload="metadata" onerror="this.remove()"></video>`
+        : `<img class="midia" src="/midia/${nome}" loading="lazy" alt="" onerror="this.remove()" />`
+    );
+    return comMidia.replace(/\n/g, '<br>');
   }
 
   function addMsg(remetente, texto, imagemDataUrl){
