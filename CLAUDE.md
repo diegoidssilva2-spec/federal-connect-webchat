@@ -56,7 +56,7 @@ copiar este arquivo pra raiz da pasta de trabalho.
    `APRENDIZADOS_<PROJETO>.md` na pasta dele no Drive (linha do tempo de
    falhas e correções, o que funcionou, o que não pode mais errar, o que
    falta melhorar). Ler antes de mexer no projeto e ATUALIZAR NO FINAL DE
-   TODA SESSÃO. Federal Connect: id `1IFh0GMEvl-BajXJVucmfw6X6384zOwoi`.
+   TODA SESSÃO. Federal Connect: id `1m1I1YOoh6SxFxv3KMmXEYbKjZaidtfv_`.
 8. Arquivo-mãe `INSIGHTS_MESTRE.md` (raiz do Cérebro Mestre): no "finalizar
    sistema", extrair os insights de cada projeto (positivos e negativos) e
    consolidar lá, por tema. Consultar SEMPRE antes de criar algo novo (bot,
@@ -75,8 +75,14 @@ copiar este arquivo pra raiz da pasta de trabalho.
   `CODIGO_federal-connect-webchat` do Drive (id `1X_kN6Gs3oH4QFIr_2s5WpV4Q3WfoWql7`).
 - Commits terminam com a linha de coautoria do Claude.
 
-## Prioridade aberta (27/09)
+## Prioridade aberta (30/09)
 
-Ler `HANDOFF_sessao_local_PC_27-09.md` na pasta raiz do Cérebro Mestre:
-incidente dos leads que sumiram do painel, investigar pelo Neon e pelos logs
-do Render.
+- Render, Neon e o site do INEMA só são alcançáveis pela sessão LOCAL (Claude
+  Desktop no PC do Diegão, que lê o `.env` de `Projetos_2026\Automações`). A
+  sessão na nuvem não alcança esses domínios: lá, trabalhar só código, GitHub
+  e Drive.
+- CAPI: a Meta nunca recebeu evento de servidor (Pixel 1805972917093569), mesmo
+  com `META_CAPI_ACCESS_TOKEN` no Render. Ler nos logs do Render as linhas
+  `CAPI_RECUSADO` / `CAPI_OK` (log adicionado em 30/09) e corrigir a causa.
+- Investigar pelo Neon, só leitura, os 194 leads em "Novo".
+- Pendências completas: `CHECKLIST_GERAL_v14.md` na raiz do Cérebro Mestre.
