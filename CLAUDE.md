@@ -11,8 +11,11 @@ copiar este arquivo pra raiz da pasta de trabalho.
 - Sempre em português. Sócio operacional: executar direto o que é óbvio, só
   parar pra dinheiro, autorização de terceiro, ambiguidade real ou ação
   irreversível.
-- Antes de cada tarefa, dizer qual modelo é o ideal pra ela (Opus pra dado de
-  produção, banco, decisão cara; Sonnet pro dia a dia; Haiku pra coisa trivial).
+- Antes de cada tarefa, dizer qual modelo é o ideal pra ela (Fable pra projeto
+  crítico, auditoria completa de código/segurança/arquitetura; Opus pra dado
+  de produção, banco, decisão cara e pra planejar/escrever o briefing que o
+  Fable vai analisar; Sonnet pro dia a dia e pra executar correções; Haiku só
+  pra coisa trivial e mecânica).
 
 ## Cérebro Mestre (Google Drive) — fonte da verdade
 
@@ -49,13 +52,15 @@ copiar este arquivo pra raiz da pasta de trabalho.
 4. Chave, senha e credencial nunca no git nem em documento compartilhado.
 5. Tráfego pago: Pixel, eventos e UTM configurados antes de subir verba.
 6. Todo aprendizado real vira skill/passo a passo reutilizável.
-7. No fim de cada projeto: resumo de tudo que se aprendeu com ele (o que
-   funcionou, erros, decisões), pra levar pros próximos projetos.
-8. Cada projeto tem um `APRENDIZADOS_<PROJETO>.md` na pasta dele no Drive
-   (linha do tempo de falhas e correções, o que funcionou, o que não pode
-   mais errar, o que falta melhorar). Ler antes de mexer no projeto e
-   acrescentar uma linha a cada falha corrigida ou melhoria. Federal Connect:
-   id `1IFh0GMEvl-BajXJVucmfw6X6384zOwoi`.
+7. Projeto não tem "fim" (está sempre evoluindo). Cada projeto tem um
+   `APRENDIZADOS_<PROJETO>.md` na pasta dele no Drive (linha do tempo de
+   falhas e correções, o que funcionou, o que não pode mais errar, o que
+   falta melhorar). Ler antes de mexer no projeto e ATUALIZAR NO FINAL DE
+   TODA SESSÃO. Federal Connect: id `1IFh0GMEvl-BajXJVucmfw6X6384zOwoi`.
+8. Arquivo-mãe `INSIGHTS_MESTRE.md` (raiz do Cérebro Mestre): no "finalizar
+   sistema", extrair os insights de cada projeto (positivos e negativos) e
+   consolidar lá, por tema. Consultar SEMPRE antes de criar algo novo (bot,
+   campanha, site, checkout...).
 
 ## Federal Connect (este repo)
 
