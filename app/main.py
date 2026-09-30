@@ -32,6 +32,7 @@ from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
 from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
 from app.knowledge_base import LINK_GABRIEL_GENERICO
 from app import meta_capi
+from app import midias
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
@@ -123,6 +124,41 @@ async def pagina_chat():
         html.replace("__META_PIXEL_ID__", pixel_id),
         headers={"Cache-Control": "no-store"},
     )
+
+
+@app.get("/midia/{nome}")
+async def midia(nome: str, range_header: str | None = Header(default=None, alias="range")):
+    # Imagem de plano / vídeo explicativo (30/09, ver app/midias.py). A IA
+    # põe [[MIDIA:nome]] na resposta e o chat busca aqui. Só nomes da lista
+    # fechada; o arquivo vem do Drive na hora.
+    if nome not in midias.MIDIAS:
+        raise HTTPException(status_code=404)
+    try:
+        achado = await asyncio.to_thread(midias.obter, nome)
+    except Exception:
+        logger.exception("FALHA_MIDIA %s", nome)
+        raise HTTPException(status_code=503)
+    if achado is None:
+        raise HTTPException(status_code=404)
+    conteudo, tipo = achado
+    total = len(conteudo)
+    cabecalhos = {"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=3600"}
+    # Range: o Safari do iPhone só toca vídeo se o servidor responder por
+    # pedaço (206); sem isso o vídeo aparece preto e não abre.
+    intervalo = re.match(r"bytes=(\d*)-(\d*)$", range_header or "")
+    if intervalo and (intervalo.group(1) or intervalo.group(2)):
+        if intervalo.group(1):
+            inicio = int(intervalo.group(1))
+            fim = int(intervalo.group(2)) if intervalo.group(2) else total - 1
+        else:
+            inicio = max(total - int(intervalo.group(2)), 0)
+            fim = total - 1
+        fim = min(fim, total - 1)
+        if inicio > fim:
+            return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
+        cabecalhos["Content-Range"] = f"bytes {inicio}-{fim}/{total}"
+        return Response(conteudo[inicio:fim + 1], status_code=206, media_type=tipo, headers=cabecalhos)
+    return Response(conteudo, media_type=tipo, headers=cabecalhos)
 
 
 @app.get("/painel")
