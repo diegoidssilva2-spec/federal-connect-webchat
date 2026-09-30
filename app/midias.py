@@ -6,10 +6,11 @@ A IA marca na resposta onde vai uma mídia com uma tag tipo
 por /midia/<nome> buscando o arquivo no Drive NA HORA (regra do projeto:
 imagem de plano nunca vai pro banco).
 
-Como achar o arquivo: dentro da pasta DRIVE_PASTA_MIDIAS_ID, o arquivo cujo
-NOME contém a chave (ex: "plano_claro.png"). Pra trocar uma imagem é só subir
-outra com o mesmo nome no Drive — sem deploy. Se houver mais de um, vale o
-mais recente.
+Como achar o arquivo: dentro da pasta DRIVE_PASTA_MIDIAS_ID, a imagem (ou
+vídeo) cujo NOME tem a palavra da operadora — do jeito que o Diegão nomeia,
+ex: "Claro 69,90 80 Gigas.png", "Tim 69,90 100 Gigas.png". Pra trocar uma
+arte é só subir outra com a palavra no nome — sem deploy. Se houver mais de
+uma, vale a mais recente.
 
 Cache em memória por 1h (o Render reinicia a cada deploy, então isso nunca é
 a cópia "oficial" de nada, só evita baixar do Drive a cada lead).
@@ -26,13 +27,13 @@ logger = logging.getLogger("federal-webchat")
 
 # Lista fechada: só essas chaves podem virar arquivo servido (nada vindo do
 # navegador vira busca livre no Drive).
+# nome da tag -> (tipo, palavra procurada no nome do arquivo no Drive)
 MIDIAS = {
-    "plano_federal": "imagem",
-    "plano_vivo": "imagem",
-    "plano_tim": "imagem",
-    "plano_claro": "imagem",
-    "video_cadastro": "video",
-    "video_ativacao": "video",
+    "plano_vivo": ("imagem", "vivo"),
+    "plano_tim": ("imagem", "tim"),
+    "plano_claro": ("imagem", "claro"),
+    "video_cadastro": ("video", "cadastro"),
+    "video_ativacao": ("video", "ativacao"),
 }
 
 _CACHE_SEGUNDOS = 3600
@@ -66,14 +67,18 @@ def obter(nome: str) -> tuple[bytes, str] | None:
         if em_cache and time.time() - em_cache[0] < _CACHE_SEGUNDOS:
             return em_cache[1], em_cache[2]
 
-        arquivos = google_service.buscar_arquivos_por_palavra_chave(DRIVE_PASTA_MIDIAS_ID, nome)
+        tipo_midia, palavra = MIDIAS[nome]
+        arquivos = google_service.buscar_arquivos_por_palavra_chave(
+            DRIVE_PASTA_MIDIAS_ID, palavra,
+            tipo_mime="image/" if tipo_midia == "imagem" else "video/",
+        )
         if not arquivos:
             logger.warning("MIDIA_NAO_ENCONTRADA %s na pasta do Drive %s", nome, DRIVE_PASTA_MIDIAS_ID)
             return None
         arquivo = arquivos[0]
         conteudo = google_service.baixar_arquivo_bytes(arquivo["id"])
         tipo = arquivo.get("mimeType") or "application/octet-stream"
-        if MIDIAS[nome] == "imagem":
+        if tipo_midia == "imagem":
             conteudo, tipo = _reduzir_imagem(conteudo)
 
         _cache[nome] = (time.time(), conteudo, tipo)
