@@ -19,6 +19,7 @@ import json
 import logging
 import re
 import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -105,5 +106,17 @@ def enviar_evento(
         with urllib.request.urlopen(req, timeout=5) as resp:
             if resp.status >= 300:
                 logger.warning("CAPI respondeu %s pro evento %s", resp.status, nome_evento)
+    except urllib.error.HTTPError as erro:
+        # 30/09: antes só logava "falhou", sem o motivo — a Meta explica no
+        # corpo da resposta (token inválido/expirado, pixel errado, campo
+        # faltando). Sem isso não dava pra saber por que nenhum evento de
+        # servidor chegava.
+        try:
+            motivo = erro.read().decode("utf-8", "replace")[:500]
+        except Exception:
+            motivo = "(sem corpo)"
+        logger.error("CAPI_RECUSADO evento=%s status=%s resposta=%s", nome_evento, erro.code, motivo)
     except Exception:
         logger.exception("Falha ao mandar evento %s pro CAPI (Pixel de navegador segue funcionando)", nome_evento)
+    else:
+        logger.info("CAPI_OK evento=%s", nome_evento)
