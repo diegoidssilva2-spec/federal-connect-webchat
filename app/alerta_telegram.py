@@ -64,6 +64,75 @@ def _montar_texto(conversa, minutos: int) -> str:
     return "\n".join(linhas)
 
 
+def _ultima_do_lead(conversa) -> str:
+    """Trecho da última mensagem do lead, pra quem lê o alerta ter contexto."""
+    for m in reversed(conversa.history):
+        if isinstance(m, dict):
+            papel, conteudo = m.get("role"), m.get("content")
+        else:
+            papel = "user" if getattr(m, "type", "") == "human" else "assistant"
+            conteudo = getattr(m, "content", None)
+        if papel != "user":
+            continue
+        if isinstance(conteudo, list):
+            conteudo = " ".join(b.get("text", "") for b in conteudo if isinstance(b, dict))
+        texto = (conteudo or "").strip().replace("\n", " ")
+        if texto:
+            return texto[:140] + ("…" if len(texto) > 140 else "")
+    return ""
+
+
+def _montar_evento(conversa, tipo: str, motivo: str = "") -> str:
+    titulos = {
+        "humano": "🙋 Lead precisa de ATENDIMENTO HUMANO",
+        "pagando": "💰 Lead chegou no PAGAMENTO (recebeu o link de adesão)",
+        "quente": "🔥 Lead quente PARADO (conversou e sumiu)",
+    }
+    linhas = [titulos[tipo], conversa.lead_name or "Lead sem nome"]
+    if motivo:
+        linhas.append(motivo)
+    if conversa.lead_phone:
+        linhas.append(f"WhatsApp: {conversa.lead_phone}")
+    link = _link_whatsapp(conversa.lead_phone)
+    if link:
+        linhas.append(f"Chamar: {link}")
+    if conversa.lead_origem:
+        linhas.append(f"Origem: {conversa.lead_origem}")
+    ultima = _ultima_do_lead(conversa)
+    if ultima:
+        linhas.append(f"Última msg do lead: {ultima}")
+    return "\n".join(linhas)
+
+
+async def avisar_evento(conversa, tipo: str, motivo: str = "") -> None:
+    """Alerta imediato quando o lead ENTRA em 'precisa de humano' ou 'pagamento'.
+    Uma vez por lead e por tipo (chave tipo:session_id, gravada no banco, então
+    um deploy não repete). Nunca derruba o chat: qualquer erro só vira log."""
+    if not disponivel():
+        return
+    chave = f"{tipo}:{conversa.session_id}"
+    if chave in _ja_avisadas:
+        return
+    try:
+        enviou = await asyncio.to_thread(_enviar, _montar_evento(conversa, tipo, motivo))
+        if enviou:
+            _ja_avisadas.add(chave)
+            await asyncio.to_thread(db.registrar_alerta, chave, time.time())
+            logger.info("ALERTA_TELEGRAM_OK %s %s", tipo, conversa.session_id[:8])
+    except Exception:
+        logger.exception("Falha no alerta de Telegram (%s) — o chat segue normal", tipo)
+
+
+_tarefas_alerta: set = set()
+
+
+def disparar(conversa, tipo: str, motivo: str = "") -> None:
+    """Agenda o alerta em segundo plano (não faz o lead esperar o Telegram)."""
+    tarefa = asyncio.create_task(avisar_evento(conversa, tipo, motivo))
+    _tarefas_alerta.add(tarefa)
+    tarefa.add_done_callback(_tarefas_alerta.discard)
+
+
 def _enviar(texto: str) -> bool:
     """Chamada de rede síncrona — rodar via asyncio.to_thread."""
     try:
@@ -84,6 +153,14 @@ def _enviar(texto: str) -> bool:
 async def _varrer_uma_vez() -> None:
     agora = time.time()
     for conversa in list(CONVERSAS.values()):
+        # Lead quente parado (01/10): conversou de verdade (nome/WhatsApp + algumas
+        # mensagens), ainda está em "conversando" e sumiu há 30 min a 12 h.
+        if conversa.estagio == "conversando" and conversa.lead_phone and len(conversa.history) >= 6:
+            chave = f"quente:{conversa.session_id}"
+            parado = agora - conversa.ultima_mensagem_em
+            if chave not in _ja_avisadas and ESPERA_MIN_SEGUNDOS <= parado <= JANELA_MAX_SEGUNDOS:
+                await avisar_evento(conversa, "quente", f"Parado há {int(parado // 60)} min")
+            continue
         if conversa.estagio != "aguardando_pagamento":
             continue
         if conversa.session_id in _ja_avisadas:

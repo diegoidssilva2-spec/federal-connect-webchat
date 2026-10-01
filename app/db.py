@@ -182,6 +182,24 @@ def inicializar_alertas(espera_segundos: float) -> None:
                       AND ultima_mensagem_em < EXTRACT(EPOCH FROM now()) - %s
                     ON CONFLICT (session_id) DO NOTHING
                 """, (espera_segundos,))
+            # 01/10: alerta de "lead quente parado" é novo. Na 1ª subida com ele,
+            # marca os leads que JÁ estão assim como avisados (senão todos
+            # receberiam alerta de uma vez). Marcador próprio na mesma tabela.
+            ja_semeou = conn.execute(
+                "SELECT 1 FROM alertas_enviados WHERE session_id = '__seed_quente_v1__'"
+            ).fetchone()
+            if not ja_semeou:
+                conn.execute("""
+                    INSERT INTO alertas_enviados (session_id, enviado_em)
+                    SELECT 'quente:' || session_id, EXTRACT(EPOCH FROM now())
+                    FROM conversas
+                    WHERE estagio = 'conversando' AND lead_phone IS NOT NULL
+                    ON CONFLICT (session_id) DO NOTHING
+                """)
+                conn.execute(
+                    "INSERT INTO alertas_enviados (session_id, enviado_em) "
+                    "VALUES ('__seed_quente_v1__', EXTRACT(EPOCH FROM now())) ON CONFLICT (session_id) DO NOTHING"
+                )
     except Exception:
         logger.exception("Falha ao preparar a tabela de alertas enviados (alerta segue só em memória)")
 

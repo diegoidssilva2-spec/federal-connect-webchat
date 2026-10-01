@@ -607,6 +607,7 @@ async def ws_chat(
                 # estava avançado no cadastro.
                 if _indice_estagio(conversa.estagio) < _indice_estagio("aguardando_humano"):
                     conversa.estagio = "aguardando_humano"
+                    alerta_telegram.disparar(conversa, "humano", "A IA falhou ao responder (instabilidade)")
                 await _persistir(conversa)
                 await _broadcast_painel()
                 continue
@@ -646,6 +647,12 @@ async def ws_chat(
                     conversa.estagio = sugerido
             elif _indice_estagio(sugerido) > _indice_estagio(estagio_antes):
                 conversa.estagio = sugerido
+            # Alertas no Telegram (01/10) quando o lead ENTRA nesses dois pontos.
+            if conversa.estagio != estagio_antes:
+                if conversa.estagio == "aguardando_humano":
+                    alerta_telegram.disparar(conversa, "humano")
+                elif conversa.estagio == "aguardando_pagamento":
+                    alerta_telegram.disparar(conversa, "pagando")
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
 
