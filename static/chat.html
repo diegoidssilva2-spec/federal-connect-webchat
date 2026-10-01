@@ -289,7 +289,11 @@
     const escapado = texto
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      // 01/10 (auditoria): aspas também, senão um link com " fecha o atributo
+      // href e injeta código (ex: onmouseover=...).
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
     // A cartilha usa *negrito* estilo WhatsApp (um asterisco) pra destacar
     // nome de plano, valores, CTAs etc — sem isso o texto chegava com os
     // asteriscos literais na tela em vez de negrito (queixa do Sandro sobre

@@ -156,11 +156,13 @@ def tocar(conversa: Conversa) -> None:
 
 def compactar_conversa_encerrada(conversa: Conversa) -> None:
     """
-    Chamado quando a conversa é marcada como 'concluido'. Em vez de manter
-    o histórico completo (que só cresce e nunca é mais usado depois de
-    fechada), guarda um resumo mínimo — só o suficiente pro operador
-    reconhecer o lead se ele voltar a falar no mesmo link antes do servidor
-    reiniciar. Isso é o que mantém o "banco de dados" enxuto.
+    Chamado quando a conversa é marcada como 'concluido'. Guarda um resumo
+    mínimo pro operador reconhecer o lead.
+
+    01/10 (auditoria): NÃO apaga mais o histórico. Antes zerava a lista e o
+    banco gravava isso — uma conclusão por engano perdia a conversa inteira
+    do lead pra sempre. O histórico é pequeno (~113 bytes por conversa em
+    média), então manter custa praticamente nada.
 
     Importante: o resumo NÃO é reinjetado na conversa com a IA (evita
     formato de mensagem inválido pra API) — é só uma anotação visível pro
@@ -172,7 +174,6 @@ def compactar_conversa_encerrada(conversa: Conversa) -> None:
         f"Conversa concluída em {time.strftime('%d/%m %H:%M', time.localtime())} "
         f"— {total_mensagens} mensagens trocadas."
     )
-    conversa.history = []
 
 
 # ---------------------------------------------------------------------------

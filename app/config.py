@@ -29,7 +29,9 @@ LINK_ATIVACAO_FEDERAL = os.environ.get(
 
 # Senha simples pro painel do operador (Gabriel/Marcos). Trocar por login de
 # verdade quando sair do MVP de teste.
-OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "federal2026")
+# 01/10 (auditoria): sem valor padrão — o antigo estava no GitHub. Se a
+# variável faltar no Render, o painel e o export de leads ficam FECHADOS.
+OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "")
 
 # Consultor humano que assume a ativação de chip físico (handoff feito pela
 # IA — ver knowledge_base.py, seção HANDOFF DE ATIVAÇÃO). Nome e WhatsApp

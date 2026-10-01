@@ -564,9 +564,9 @@
       const urgente = c.estagio === 'aguardando_humano';
       const div = document.createElement('div');
       div.className = 'item' + (c.session_id === selecionada ? ' selecionado' : '') + (urgente ? ' precisa-humano' : '');
-      const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
-      const rotuloEstagio = urgente ? '🚨 Precisa de atendimento humano' : c.estagio.replace(/_/g,' ');
-      div.innerHTML = `<div class="nome">${nome}<span class="hora-item">${horaCurta(c.ultima_mensagem_em)}</span></div><div class="estagio ${c.estagio}">${rotuloEstagio}</div>`;
+      const nome = esc(c.lead_name || ('Lead ' + c.session_id.slice(0,8)));
+      const rotuloEstagio = urgente ? '🚨 Precisa de atendimento humano' : esc(c.estagio.replace(/_/g,' '));
+      div.innerHTML = `<div class="nome">${nome}<span class="hora-item">${horaCurta(c.ultima_mensagem_em)}</span></div><div class="estagio ${esc(c.estagio)}">${rotuloEstagio}</div>`;
       div.addEventListener('click', () => selecionar(c.session_id));
       el.appendChild(div);
     });
@@ -659,10 +659,19 @@
     }
   }
 
+  // 01/10 (auditoria): nome, notas e origem do lead vêm do que o lead escreveu
+  // (a IA extrai da conversa). Entram no painel via innerHTML, então precisam
+  // ser escapados — senão um lead consegue injetar código no navegador do operador.
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
   function tituloConversa(c){
-    const nome = c.lead_name || ('Lead ' + c.session_id.slice(0,8));
-    const telefone = c.lead_phone ? ` · 📱 ${c.lead_phone}` : '';
-    return `${nome}${telefone} — <span class="estagio ${c.estagio}">${c.estagio.replace(/_/g,' ')}</span>`;
+    const nome = esc(c.lead_name || ('Lead ' + c.session_id.slice(0,8)));
+    const telefone = c.lead_phone ? ` · 📱 ${esc(c.lead_phone)}` : '';
+    return `${nome}${telefone} — <span class="estagio ${esc(c.estagio)}">${esc(c.estagio.replace(/_/g,' '))}</span>`;
   }
 
   // Horário (27/09, pedido Diegão): hoje mostra só HH:MM, outro dia mostra
@@ -678,8 +687,8 @@
   function notasELinha(c){
     const partes = [];
     partes.push(`🕒 início ${horaCurta(c.criada_em)} · última ${horaCurta(c.ultima_mensagem_em)}`);
-    if(c.lead_origem) partes.push('📍 ' + c.lead_origem);
-    if(c.lead_notes) partes.push('📝 ' + c.lead_notes);
+    if(c.lead_origem) partes.push('📍 ' + esc(c.lead_origem));
+    if(c.lead_notes) partes.push('📝 ' + esc(c.lead_notes));
     return partes.join(' &nbsp;·&nbsp; ');
   }
 
@@ -777,7 +786,11 @@
     const escapado = texto
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      // 01/10 (auditoria): aspas também, senão um link com " fecha o atributo
+      // href e injeta código (ex: onmouseover=...) no painel do operador.
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
     // Mesmo fix do chat.html: *negrito* estilo WhatsApp vira <b>, e quebra
     // de linha vira <br> — antes disso o painel mostrava tudo cru, um em
     // cima do outro, com os asteriscos literais (era a mesma falha do

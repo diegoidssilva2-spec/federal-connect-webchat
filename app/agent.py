@@ -3,12 +3,13 @@ Orquestrador do agente FLYER usando LangGraph.
 Fase 0: state em memória (dict). Fase 1+ troca por checkpoint Postgres/Redis
 sem mudar a lógica do grafo.
 """
+import re
 from typing import TypedDict, Annotated, Literal, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 import anthropic
 
-from app.config import ANTHROPIC_API_KEY, PRIMARY_MODEL
+from app.config import ANTHROPIC_API_KEY, PRIMARY_MODEL, CONSULTOR_HUMANO_WHATSAPP_NUMERO
 from app.knowledge_base import SYSTEM_PROMPT
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -73,6 +74,13 @@ def call_llm(state: AgentState) -> AgentState:
 
     handoff_triggers = ["sandro", "atendimento humano", "wa.me/5511940511444"]
     handoff = any(t in reply_text.lower() for t in handoff_triggers)
+    # 01/10 (auditoria): os gatilhos acima são do consultor antigo e nunca
+    # batiam. O link GENÉRICO do consultor atual (sem "?text=") é o que a
+    # cartilha manda quando o lead pede uma pessoa ou o caso precisa de humano;
+    # os links com mensagem pronta (chip local/Correios/ativando) são fluxo
+    # normal de chip e não contam.
+    if re.search(rf"wa\.me/{re.escape(CONSULTOR_HUMANO_WHATSAPP_NUMERO)}(?!\?)", reply_text):
+        handoff = True
 
     return {
         "messages": [{"role": "assistant", "content": reply_text}],
@@ -90,7 +98,11 @@ def call_llm(state: AgentState) -> AgentState:
 _MARCOS_ESTAGIO = [
     # Ordem importa: checa do mais avançado pro menos avançado, e para no
     # primeiro que bater — evita "voltar" o estágio por engano.
-    ("concluido", ["iniciar o atendimento", "assistente virtual", "protocolo automaticamente", "wa.me/5508008882629"]),
+    # 01/10 (auditoria): "iniciar o atendimento"/"assistente virtual"/"protocolo
+    # automaticamente" saíram daqui — a IA diz "sou a assistente virtual" em
+    # qualquer conversa e isso marcava o lead como concluído e apagava o histórico.
+    # Só o link de ativação da Federal (bloco do Passo 4) marca concluído.
+    ("concluido", ["wa.me/5508008882629"]),
     ("aguardando_ativacao", ["nunca abra", "nunca insira o chip", "aguarde a confirmação"]),
     ("aguardando_pagamento", ["assinatura do contrato", "clicksign", "print da tela de confirmação"]),
     ("conversando", []),  # fallback — qualquer resposta normal da IA

@@ -10,14 +10,16 @@ Rodar local: uvicorn app.main:app --reload --port 8000
 """
 import asyncio
 import csv
+import hmac
 import io
 import json
 import logging
 import mimetypes
 import re
 import time
+from collections import deque
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Header
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Query, Header
 
 # 27/09: o Python desta imagem/SO não tem ".webp" no banco de tipos padrão
 # (mimetypes) — o StaticFiles servia a logo do avatar como
@@ -66,6 +68,60 @@ async def _persistir(conversa: Conversa) -> None:
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# 01/10 (auditoria): senha do painel comparada em tempo constante, sem valor
+# padrão (config.py), e com trava de tentativas erradas. Tudo em memória,
+# custo zero. A chave é o último IP do X-Forwarded-For (o que o proxy do Render
+# acrescenta; o início da lista o cliente consegue forjar). Atrás do proxy
+# vários visitantes podem dividir o mesmo IP, então o limite é folgado.
+_MAX_ERROS_SENHA = 8
+_JANELA_ERROS_SENHA = 15 * 60
+_ERROS_SENHA: dict[str, list[float]] = {}
+
+
+def _chave_cliente(headers, client) -> str:
+    xff = headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[-1].strip()
+    return client.host if client else "?"
+
+
+def _senha_bloqueada(chave: str) -> bool:
+    agora = time.time()
+    erros = [t for t in _ERROS_SENHA.get(chave, []) if agora - t < _JANELA_ERROS_SENHA]
+    _ERROS_SENHA[chave] = erros
+    return len(erros) >= _MAX_ERROS_SENHA
+
+
+def _registrar_erro_senha(chave: str) -> None:
+    _ERROS_SENHA.setdefault(chave, []).append(time.time())
+
+
+def _senha_confere(informada) -> bool:
+    if not OPERATOR_PASSWORD or not isinstance(informada, str):
+        return False
+    return hmac.compare_digest(informada.encode("utf-8"), OPERATOR_PASSWORD.encode("utf-8"))
+
+
+# 01/10 (auditoria): limite de mensagens por conversa e de tamanho de imagem,
+# pra um robô não queimar o crédito da Anthropic (cada mensagem = 2 chamadas
+# de IA). Lead de verdade manda poucas mensagens, então não percebe.
+_MAX_MENSAGENS_JANELA = 20
+_JANELA_MENSAGENS = 10 * 60
+_MAX_IMAGEM_BASE64 = 7_000_000  # ~5 MB de imagem
+_MENSAGENS_RECENTES: dict[str, deque] = {}
+
+
+def _excedeu_limite_mensagens(session_id: str) -> bool:
+    agora = time.time()
+    fila = _MENSAGENS_RECENTES.setdefault(session_id, deque())
+    while fila and agora - fila[0] > _JANELA_MENSAGENS:
+        fila.popleft()
+    if len(fila) >= _MAX_MENSAGENS_JANELA:
+        return True
+    fila.append(agora)
+    return False
 
 
 # 29/09 (Sandro mandou mensagem e o bot não respondeu): a chamada da IA não
@@ -174,10 +230,14 @@ async def pagina_painel():
 
 
 @app.get("/exportar-leads.csv")
-async def exportar_leads(x_senha: str | None = Header(default=None)):
+async def exportar_leads(request: Request, x_senha: str | None = Header(default=None)):
     # Senha vem no header X-Senha, não na URL — query string fica gravada em
     # texto puro nos logs de acesso do Render (achado no incidente de 27/09).
-    if x_senha != OPERATOR_PASSWORD:
+    chave = _chave_cliente(request.headers, request.client)
+    if _senha_bloqueada(chave):
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde alguns minutos.")
+    if not _senha_confere(x_senha):
+        _registrar_erro_senha(chave)
         raise HTTPException(status_code=403, detail="Senha incorreta")
     buffer = io.StringIO()
     writer = csv.writer(buffer)
@@ -454,6 +514,19 @@ async def ws_chat(
             if not texto_lead and not imagem_base64:
                 continue
 
+            if imagem_base64 and len(imagem_base64) > _MAX_IMAGEM_BASE64:
+                await websocket.send_json({
+                    "type": "mensagem", "remetente": "ia",
+                    "texto": "Essa imagem ficou muito grande pra eu abrir 😅 Manda de novo um print menor, por favor.",
+                })
+                continue
+            if _excedeu_limite_mensagens(conversa.session_id):
+                await websocket.send_json({
+                    "type": "mensagem", "remetente": "ia",
+                    "texto": "Calma, você mandou muitas mensagens em pouco tempo 🙏 Espera uns minutinhos e continua, tá?",
+                })
+                continue
+
             tocar(conversa)
             mensagem_espelho = texto_lead or "[imagem recebida — ex: comprovante/contrato]"
             await _enviar_mensagem_para_operadores_da_conversa(conversa, "lead", mensagem_espelho)
@@ -561,7 +634,18 @@ async def ws_chat(
             # Classificação automática — a IA decide o estágio sozinha,
             # ninguém no painel precisa clicar pra mudar isso manualmente.
             estagio_antes = conversa.estagio
-            conversa.estagio = resultado["estagio_sugerido"]
+            # 01/10 (auditoria): a IA só FAZ AVANÇAR o estágio. Antes ele era
+            # sobrescrito a cada resposta, então um lead em "aguardando
+            # pagamento" que mandava uma dúvida voltava pra "conversando"
+            # (alerta do Telegram não disparava e o painel mentia). Pedido de
+            # humano é a exceção: marca "aguardando_humano" em qualquer ponto
+            # (menos depois de concluído). Voltar de estágio é só pelo operador.
+            sugerido = resultado["estagio_sugerido"]
+            if sugerido == "aguardando_humano":
+                if estagio_antes != "concluido":
+                    conversa.estagio = sugerido
+            elif _indice_estagio(sugerido) > _indice_estagio(estagio_antes):
+                conversa.estagio = sugerido
             if resultado["handoff_requested"] and not conversa.handoff_link_enviado:
                 conversa.handoff_link_enviado = True
 
@@ -572,7 +656,7 @@ async def ws_chat(
             for evento in _eventos_pixel_por_transicao(estagio_antes, conversa.estagio):
                 await _avisar_evento_pixel(conversa, evento)
 
-            if conversa.estagio == "concluido":
+            if conversa.estagio == "concluido" and estagio_antes != "concluido":
                 # 27/09 (pedido Diegão): lead finalizado é arquivado numa
                 # planilha externa pra preservar o histórico. IMPORTANTE
                 # (28/09, correção de segurança): NÃO exclui mais da base
@@ -614,11 +698,21 @@ async def ws_painel(websocket: WebSocket):
     # URL — query string fica gravada em texto puro nos logs de acesso do
     # Render (achado no incidente de 27/09).
     await websocket.accept()
+    chave = _chave_cliente(websocket.headers, websocket.client)
+    if _senha_bloqueada(chave):
+        # 4002 (não 4001): o painel só apaga a senha salva quando recebe 4001
+        # (senha errada); aqui é bloqueio temporário, não deve apagar nada.
+        try:
+            await websocket.close(code=4002)
+        except Exception:
+            pass
+        return
     try:
         auth = json.loads(await asyncio.wait_for(websocket.receive_text(), timeout=10))
     except Exception:
         auth = {}
-    if not isinstance(auth, dict) or auth.get("acao") != "auth" or auth.get("senha") != OPERATOR_PASSWORD:
+    if not isinstance(auth, dict) or auth.get("acao") != "auth" or not _senha_confere(auth.get("senha")):
+        _registrar_erro_senha(chave)
         try:
             await websocket.close(code=4001)
         except Exception:
