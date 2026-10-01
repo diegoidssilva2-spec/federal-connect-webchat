@@ -22,6 +22,7 @@ import re
 import time
 import urllib.request
 
+from app import db
 from app.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 from app.store import CONVERSAS
 
@@ -93,6 +94,9 @@ async def _varrer_uma_vez() -> None:
         enviou = await asyncio.to_thread(_enviar, _montar_texto(conversa, int(parado // 60)))
         if enviou:
             _ja_avisadas.add(conversa.session_id)
+            # 01/10: grava no banco que já avisou — um redeploy não zera isso
+            # mais e o mesmo lead nunca é avisado duas vezes.
+            await asyncio.to_thread(db.registrar_alerta, conversa.session_id, time.time())
             logger.info("ALERTA_TELEGRAM_OK lead parado %s", conversa.session_id[:8])
 
 
@@ -101,7 +105,11 @@ async def loop_alertas() -> None:
     if not disponivel():
         logger.warning("Alerta de Telegram desligado (TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID não configurados).")
         return
-    logger.info("Alerta de Telegram ligado (lead parado em aguardando pagamento).")
+    # Antes de varrer: prepara a tabela e carrega quem já foi avisado (se o
+    # banco falhar, segue só com a memória, como antes).
+    await asyncio.to_thread(db.inicializar_alertas, ESPERA_MIN_SEGUNDOS)
+    _ja_avisadas.update(await asyncio.to_thread(db.carregar_alertas))
+    logger.info("Alerta de Telegram ligado (lead parado em aguardando pagamento). Já avisados: %d", len(_ja_avisadas))
     while True:
         try:
             await _varrer_uma_vez()

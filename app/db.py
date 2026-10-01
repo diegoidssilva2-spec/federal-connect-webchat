@@ -149,6 +149,68 @@ def salvar(conversa) -> None:
         logger.exception("Falha ao salvar conversa %s no banco (segue só em memória)", conversa.session_id)
 
 
+# ---------------------------------------------------------------------------
+# Alertas de Telegram já enviados (01/10). Tabela PRÓPRIA e pequena, separada
+# de "conversas" de propósito: uma falha aqui nunca pode atrapalhar a gravação
+# das conversas (o upsert delas não mudou). Sem ela, todo redeploy zerava a
+# lista em memória e o Telegram reenviava o alerta de todo lead parado.
+# Custo: 1 linha por alerta enviado e 1 leitura na subida do servidor.
+# ---------------------------------------------------------------------------
+
+def inicializar_alertas(espera_segundos: float) -> None:
+    """Cria a tabela. Na PRIMEIRA vez, marca como já avisados os leads que já
+    estão parados em aguardando_pagamento há mais de `espera_segundos` (eles
+    já foram avisados antes do deploy ou são lead frio) — senão todos
+    receberiam o alerta de novo."""
+    if not disponivel():
+        return
+    try:
+        with _conectar() as conn:
+            existia = conn.execute("SELECT to_regclass('public.alertas_enviados') IS NOT NULL").fetchone()[0]
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS alertas_enviados (
+                    session_id TEXT PRIMARY KEY,
+                    enviado_em DOUBLE PRECISION NOT NULL
+                )
+            """)
+            if not existia:
+                conn.execute("""
+                    INSERT INTO alertas_enviados (session_id, enviado_em)
+                    SELECT session_id, EXTRACT(EPOCH FROM now())
+                    FROM conversas
+                    WHERE estagio = 'aguardando_pagamento'
+                      AND ultima_mensagem_em < EXTRACT(EPOCH FROM now()) - %s
+                    ON CONFLICT (session_id) DO NOTHING
+                """, (espera_segundos,))
+    except Exception:
+        logger.exception("Falha ao preparar a tabela de alertas enviados (alerta segue só em memória)")
+
+
+def carregar_alertas() -> set[str]:
+    if not disponivel():
+        return set()
+    try:
+        with _conectar() as conn:
+            return {linha[0] for linha in conn.execute("SELECT session_id FROM alertas_enviados").fetchall()}
+    except Exception:
+        logger.exception("Falha ao carregar alertas enviados (pode reenviar alertas antigos)")
+        return set()
+
+
+def registrar_alerta(session_id: str, enviado_em: float) -> None:
+    if not disponivel():
+        return
+    try:
+        with _conectar() as conn:
+            conn.execute(
+                "INSERT INTO alertas_enviados (session_id, enviado_em) VALUES (%s, %s) "
+                "ON CONFLICT (session_id) DO NOTHING",
+                (session_id, enviado_em),
+            )
+    except Exception:
+        logger.exception("Falha ao gravar alerta enviado %s", session_id[:8])
+
+
 def excluir(session_id: str) -> None:
     if not disponivel():
         return
