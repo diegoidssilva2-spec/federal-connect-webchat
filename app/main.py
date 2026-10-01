@@ -33,6 +33,7 @@ from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
 from app.knowledge_base import LINK_GABRIEL_GENERICO
 from app import meta_capi
 from app import midias
+from app import alerta_telegram
 from app.store import (
     CONVERSAS, OPERADORES_CONECTADOS, Conversa,
     nova_conversa, obter, listar, tocar, compactar_conversa_encerrada,
@@ -52,6 +53,9 @@ async def _ao_subir():
     # memória — sem isso, todo redeploy do Render apagava as conversas em
     # andamento. Roda em thread pra não travar a subida do servidor.
     await asyncio.to_thread(inicializar_banco_e_carregar)
+    # 01/10: avisa no Telegram lead parado em "aguardando pagamento". Guarda
+    # a referência da tarefa pra ela não ser coletada pelo garbage collector.
+    app.state.tarefa_alerta_telegram = asyncio.create_task(alerta_telegram.loop_alertas())
 
 
 async def _persistir(conversa: Conversa) -> None:

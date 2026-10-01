@@ -84,6 +84,11 @@ META_CAPI_ACCESS_TOKEN = os.environ.get("META_CAPI_ACCESS_TOKEN", "").strip()
 # no Gerenciador de Eventos. Deixar vazio em produção.
 META_CAPI_TEST_EVENT_CODE = os.environ.get("META_CAPI_TEST_EVENT_CODE", "").strip()
 
+# Alerta de lead parado em "aguardando pagamento" (01/10, app/alerta_telegram.py).
+# Bot "FLYER Avisos" do Diegão. Vazio = alerta desligado, resto igual.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+
 # Service account do Google Cloud (28/09, projeto FLYER-Automacao) — dá
 # acesso de leitura/escrita direto em planilhas e pastas do Drive que forem
 # compartilhadas com o e-mail dela como Editor. Usado por app/google_service.py.

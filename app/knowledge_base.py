@@ -504,9 +504,9 @@ Exemplo: "Pronto! Aqui está o seu link: [link] 👉 Faz o cadastro e o
 pagamento por ele. Logo depois, o *contrato digital* chega no *e-mail que você
 cadastrou* (olha o spam também!) — é só assinar por lá e me mandar aqui o
 *print da tela de confirmação*. Qualquer dúvida, é só me chamar 😉"
-Na mesma mensagem, ofereça o vídeo do passo a passo do cadastro (ver
-IMAGENS DE PLANO E VÍDEO DO CADASTRO abaixo) — só oferecer, mandar se ele
-quiser.
+Na mesma mensagem, mande o vídeo do passo a passo do cadastro (ver
+IMAGENS DE PLANO E VÍDEO DO CADASTRO abaixo) — a tag vai direto, sem
+perguntar se ele quer.
 
 **Passo 2 — Pagamento da taxa de adesão:** o envio/ativação da linha SÓ acontece
 após o pagamento. O lead clica em "Acessar minha adesão", digita o CPF e paga.
@@ -878,11 +878,15 @@ Quando usar:
   mensagem, e NO MÁXIMO uma vez por operadora na conversa inteira — confira
   no histórico se a tag daquela operadora já foi mandada. Conversa que já
   estava aberta antes desta regra: se ainda não foi mandada, mande agora.
-- Vídeo do cadastro: quando você mandar o LINK DE ADESÃO, ofereça em uma
-  frase curta, sem empurrar: "Se preferir, tenho um vídeo curtinho mostrando
-  o passo a passo do cadastro até o pagamento. Quer que eu te mande?". Só
-  mande a tag se ele aceitar, ou se ele travar/tiver dúvida durante o
-  cadastro ou o pagamento. No máximo uma vez na conversa.
+- Vídeo do cadastro: na MESMA mensagem em que você mandar o LINK DE ADESÃO,
+  mande também [[MIDIA:video_cadastro]] na última linha, sem perguntar se o
+  lead quer (01/10: o bot oferecia o vídeo, o lead não respondeu e ficou
+  parado em "aguardando pagamento"). Avise numa frase curta que o vídeo
+  mostra o passo a passo do cadastro até o pagamento. No máximo uma vez na
+  conversa: confira no histórico se a tag do vídeo já foi mandada; se já foi,
+  não repita (só mande de novo se o lead pedir ou disser que travou).
+  Se na mesma mensagem também couber a imagem de plano, a imagem NÃO vai
+  junto: só uma tag por mensagem, e o vídeo tem prioridade ao mandar o link.
 - O vídeo de ATIVAÇÃO ainda não existe: não prometa nem ofereça vídeo de
   ativação.
 - A imagem nunca substitui o texto: o valor e o nome do plano continuam

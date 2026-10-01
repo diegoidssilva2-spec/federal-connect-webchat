@@ -151,6 +151,8 @@
   .msg.ia{ background:#1A2E22; align-self:flex-end; }
   .msg.operador{ background:#3A2A14; align-self:flex-end; }
   .msg a{ color:var(--verde); text-decoration:underline; word-break:break-all; }
+  .msg img.midia{ max-width:100%; border-radius:8px; margin-top:6px; display:block; }
+  .msg video.midia{ width:100%; max-height:60vh; border-radius:8px; margin-top:6px; display:block; background:#000; }
 
   #form-operador{ display:none; padding:14px; gap:10px; border-top:1px solid var(--linha); }
   #form-operador.ativo{ display:flex; }
@@ -785,7 +787,15 @@
       /(https?:\/\/[^\s<]+)/g,
       '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
     );
-    return comLinks.replace(/\n/g, '<br>');
+    // 01/10: o painel mostrava a tag [[MIDIA:...]] como texto e o Diegão não
+    // via a imagem/vídeo que o lead recebeu. Mesma troca do chat.html (o
+    // arquivo vem do Drive pelo /midia, nada é gravado no banco).
+    const comMidia = comLinks.replace(/\[\[MIDIA:([a-z_]+)\]\]/g, (_, nome) =>
+      nome.startsWith('video_')
+        ? `<video class="midia" src="/midia/${nome}" controls playsinline preload="metadata" onerror="this.remove()"></video>`
+        : `<img class="midia" src="/midia/${nome}" loading="lazy" alt="" onerror="this.remove()" />`
+    );
+    return comMidia.replace(/\n/g, '<br>');
   }
 
   // Rótulo de quem falou (27/09, pedido Diegão): "IA Federal" em vez de
