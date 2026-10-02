@@ -3,6 +3,12 @@ import os
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 PRIMARY_MODEL = os.environ.get("PRIMARY_MODEL", "claude-haiku-4-5-20251001")
 
+# 02/10 (otimização de custo): a busca na web do bot ficou DESLIGADA por padrão.
+# Cada busca é cobrada à parte e o prompt já traz todos os planos e preços da
+# Federal; a busca só trazia risco de preço de concorrente errado. Pra religar,
+# criar a variável BUSCA_WEB=1 no Render (sem deploy de código).
+BUSCA_WEB = os.environ.get("BUSCA_WEB", "0").strip() == "1"
+
 # Banco Postgres (Neon) — Fase 1. String de conexão do Neon, algo como
 # "postgresql://usuario:senha@ep-xxx.neon.tech/neondb?sslmode=require".
 # Sem essa variável configurada, o projeto continua rodando só em memória

@@ -290,6 +290,12 @@ async def _atualizar_perfil_lead(conversa: Conversa) -> bool:
     chamada de rede, não pode travar o loop do WebSocket enquanto o lead
     espera resposta.
     """
+    # 02/10 (otimização de custo): a extração é uma 2ª chamada de IA. Só roda
+    # enquanto falta nome ou telefone; depois disso, só a cada 5 mensagens do
+    # lead (pra atualizar notas e origem). Cortava ~1/3 do custo de IA.
+    faltando = not conversa.lead_name or not conversa.lead_phone
+    if not faltando and (len(conversa.history) // 2) % 5 != 0:
+        return False
     perfil = await asyncio.to_thread(extrair_perfil_lead_via_ia, conversa.history)
 
     mudou = False

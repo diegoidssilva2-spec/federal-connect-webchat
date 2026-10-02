@@ -9,7 +9,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 import anthropic
 
-from app.config import ANTHROPIC_API_KEY, PRIMARY_MODEL, CONSULTOR_HUMANO_WHATSAPP_NUMERO
+from app.config import ANTHROPIC_API_KEY, PRIMARY_MODEL, CONSULTOR_HUMANO_WHATSAPP_NUMERO, BUSCA_WEB
 from app.knowledge_base import SYSTEM_PROMPT
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -68,7 +68,9 @@ def call_llm(state: AgentState) -> AgentState:
         # API só ignora — não quebra nada.
         system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=history,
-        tools=[WEB_SEARCH_TOOL],
+        # Busca na web só se BUSCA_WEB=1 (config.py); desligada por padrão pra
+        # cortar custo e risco de preço de concorrente errado.
+        **({"tools": [WEB_SEARCH_TOOL]} if BUSCA_WEB else {}),
     )
     reply_text = _extract_text(response.content)
 
