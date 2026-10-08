@@ -424,6 +424,8 @@ async def _broadcast_painel():
                 "resumo_encerramento": c.resumo_encerramento,
             }
             for c in listar()
+            # 07/10: sessão que só abriu o chat e não falou nada fica fora do painel (continua no banco).
+            if c.history or c.lead_phone or c.humano_ativo
         ],
     }
     mortos = []
