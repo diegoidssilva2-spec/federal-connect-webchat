@@ -3,6 +3,7 @@ Orquestrador do agente FLYER usando LangGraph.
 Fase 0: state em memória (dict). Fase 1+ troca por checkpoint Postgres/Redis
 sem mudar a lógica do grafo.
 """
+import logging
 import re
 from typing import TypedDict, Annotated, Literal, Optional
 from langgraph.graph import StateGraph, END
@@ -11,6 +12,8 @@ import anthropic
 
 from app.config import ANTHROPIC_API_KEY, PRIMARY_MODEL, CONSULTOR_HUMANO_WHATSAPP_NUMERO, BUSCA_WEB
 from app.knowledge_base import SYSTEM_PROMPT
+
+log = logging.getLogger("agent")
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -64,7 +67,8 @@ def call_llm(state: AgentState) -> AgentState:
         # 22/10 (Haiku 5.5): raciocínio vem ligado por padrão e conta no
         # max_tokens; esforço "low" + teto maior evitam resposta cortada.
         max_tokens=1500,
-        output_config={"effort": "low"},
+        # 23/10: output_config só existe no 5.x (o 4.5 responde 400); sem o guarda, o rollback por PRIMARY_MODEL derrubava o bot.
+        **({} if "-4-" in PRIMARY_MODEL else {"output_config": {"effort": "low"}}),
         # 29/09: cache do prompt (a cartilha tem ~12 mil tokens e é igual em
         # toda mensagem). Com cache, as repetições custam ~10% do preço de
         # entrada normal e respondem mais rápido. Se não der pra cachear, a
@@ -76,6 +80,11 @@ def call_llm(state: AgentState) -> AgentState:
         **({"tools": [WEB_SEARCH_TOOL]} if BUSCA_WEB else {}),
     )
     reply_text = _extract_text(response.content)
+    # 23/10: uma linha por chamada para provar que o cache funciona (cache_read > 0 a partir da 2ª mensagem).
+    uso = getattr(response, "usage", None)
+    log.info("ia_uso origem=federal modelo=%s entrada=%s saida=%s cache_read=%s cache_create=%s", PRIMARY_MODEL,
+             getattr(uso, "input_tokens", None), getattr(uso, "output_tokens", None),
+             getattr(uso, "cache_read_input_tokens", None), getattr(uso, "cache_creation_input_tokens", None))
 
     handoff_triggers = ["sandro", "atendimento humano", "wa.me/5511940511444"]
     handoff = any(t in reply_text.lower() for t in handoff_triggers)
