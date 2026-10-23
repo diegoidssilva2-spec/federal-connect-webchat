@@ -31,7 +31,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.agent import run_agent, extrair_perfil_lead_via_ia, _to_plain_dict
-from app.config import OPERATOR_PASSWORD, META_PIXEL_ID
+from app.config import OPERATOR_PASSWORD, META_PIXEL_ID, PRIMARY_MODEL
 from app.knowledge_base import LINK_GABRIEL_GENERICO
 from app import meta_capi
 from app import midias
@@ -165,7 +165,8 @@ def _trava_da_conversa(session_id: str) -> asyncio.Lock:
 
 @app.get("/saude-ia")
 async def saude_ia():
-    return STATUS_IA
+    # 23/10: mostra o modelo em uso (conferir migração de modelo sem abrir log).
+    return {**STATUS_IA, "modelo": PRIMARY_MODEL}
 
 
 @app.get("/")
