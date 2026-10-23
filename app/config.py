@@ -1,7 +1,9 @@
 import os
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-PRIMARY_MODEL = os.environ.get("PRIMARY_MODEL", "claude-haiku-4-5-20251001")
+# 22/10: Haiku 5.5 (US$ 0,10/0,50 por M de tokens, 10x mais barato que o 4.5).
+# Voltar pro antigo sem deploy: PRIMARY_MODEL=claude-haiku-4-5-20251001 no Render.
+PRIMARY_MODEL = os.environ.get("PRIMARY_MODEL", "claude-haiku-5-5")
 
 # 02/10 (otimização de custo): a busca na web do bot ficou DESLIGADA por padrão.
 # Cada busca é cobrada à parte e o prompt já traz todos os planos e preços da

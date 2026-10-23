@@ -61,7 +61,10 @@ def call_llm(state: AgentState) -> AgentState:
     history = [_to_plain_dict(m) for m in state["messages"]]
     response = client.messages.create(
         model=PRIMARY_MODEL,
-        max_tokens=500,
+        # 22/10 (Haiku 5.5): raciocínio vem ligado por padrão e conta no
+        # max_tokens; esforço "low" + teto maior evitam resposta cortada.
+        max_tokens=1500,
+        output_config={"effort": "low"},
         # 29/09: cache do prompt (a cartilha tem ~12 mil tokens e é igual em
         # toda mensagem). Com cache, as repetições custam ~10% do preço de
         # entrada normal e respondem mais rápido. Se não der pra cachear, a
@@ -192,7 +195,7 @@ def extrair_perfil_lead_via_ia(history: list[dict]) -> dict:
     try:
         response = client.messages.create(
             model=PRIMARY_MODEL,
-            max_tokens=200,
+            max_tokens=300,  # 22/10: tokenizer do Haiku 5.5 conta ~30% a mais
             system=(
                 "Você extrai dados de identificação do LEAD — a pessoa sendo atendida, "
                 "que fala nas mensagens com role 'user' — a partir de um trecho de "
