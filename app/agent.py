@@ -198,6 +198,11 @@ def extrair_perfil_lead_via_ia(history: list[dict]) -> dict:
     historico = historico[-12:]
     while historico and historico[0]["role"] != "user":
         historico = historico[1:]
+    # 24/10: o Haiku 5.5 recusa conversa que termina com msg do 'assistant'
+    # (erro 400 "prefill") e a extração rodava logo após a resposta da IA —
+    # nome/telefone não eram mais gravados desde a troca de modelo (23/10).
+    while historico and historico[-1]["role"] != "user":
+        historico = historico[:-1]
     if not historico:
         return {"nome": None, "telefone": None, "origem": None, "notas": None}
 
@@ -235,7 +240,7 @@ def extrair_perfil_lead_via_ia(history: list[dict]) -> dict:
                     "notas": dados.get("notas"),
                 }
     except Exception:
-        pass
+        log.exception("Falha na extração de perfil do lead (nome/telefone não atualizados)")
     return {"nome": None, "telefone": None, "origem": None, "notas": None}
 
 
