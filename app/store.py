@@ -65,6 +65,7 @@ ESTAGIOS = [
     "aguardando_pagamento",
     "aguardando_ativacao",
     "concluido",
+    "descartado",          # 24/10: passou batido; some do painel, fica no banco
 ]
 
 

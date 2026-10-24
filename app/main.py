@@ -427,6 +427,9 @@ async def _broadcast_painel():
             for c in listar()
             # 07/10: sessão que só abriu o chat e não falou nada fica fora do painel (continua no banco).
             if c.history or c.lead_phone or c.humano_ativo
+            # 24/10: "descartado" (lead que passou batido) fica só no banco. Se ele
+            # voltar a falar, a IA avança o estágio e ele reaparece sozinho.
+            if c.estagio != "descartado"
         ],
     }
     mortos = []
